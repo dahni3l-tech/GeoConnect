@@ -66,3 +66,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "profile_picture",
             "is_premium",
         ]
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["bio", "profile_picture"]
