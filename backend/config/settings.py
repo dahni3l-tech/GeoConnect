@@ -149,3 +149,6 @@ CORS_ALLOWED_ORIGINS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 AUTH_USER_MODEL = "accounts.User"
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "noreply@geoconnect.com"
