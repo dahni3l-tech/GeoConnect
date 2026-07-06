@@ -1,3 +1,6 @@
+from flask import request
+
+
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,14 +15,17 @@ from django.utils.http import (
 )
 from django.utils.encoding import force_bytes
 from django.utils.encoding import force_str
-
-from .models import User
+from django.db.models import Q
+from .models import User, FriendRequest
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
     ProfileSerializer,
     ProfileUpdateSerializer,
     ChangePasswordSerializer,
+    UserSearchSerializer,
+    FriendRequestSerializer,
+    FriendRequestListSerializer,
 )
 
 
@@ -171,3 +177,89 @@ class ResetPasswordView(APIView):
 #     {
 #     "email": "folakunle2001@yahoo.com"
 # }
+class UserSearchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.GET.get("q", "")
+
+        users = User.objects.filter(
+            Q(username__icontains=query)
+        ).exclude(id=request.user.id)
+
+        serializer = UserSearchSerializer(users, many=True)
+
+        return Response(serializer.data)
+    
+class SendFriendRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        friend_requests = FriendRequest.objects.filter(
+            receiver=request.user,
+            status="pending",
+        )
+
+        serializer = FriendRequestListSerializer(
+            friend_requests,
+            many=True,
+        )
+
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = FriendRequestSerializer(data=request.data)
+
+        if serializer.is_valid():
+            receiver = serializer.validated_data["receiver"]
+
+            if receiver == request.user:
+                return Response(
+                    {"error": "You cannot send a friend request to yourself."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if FriendRequest.objects.filter(
+                sender=request.user,
+                receiver=receiver,
+            ).exists():
+                return Response(
+                    {"error": "Friend request already sent."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            serializer.save(sender=request.user)
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+class AcceptFriendRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            friend_request = FriendRequest.objects.get(
+                id=pk,
+                receiver=request.user,
+                status="pending",
+            )
+
+        except FriendRequest.DoesNotExist:
+            return Response(
+                {"error": "Friend request not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        friend_request.status = "accepted"
+        friend_request.save()
+
+        return Response(
+            {"message": "Friend request accepted successfully."}
+        )

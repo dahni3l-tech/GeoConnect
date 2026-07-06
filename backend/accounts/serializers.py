@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import User
+from .models import User, FriendRequest
+
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -91,3 +92,45 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.save()
 
         return user
+    
+class UserSearchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "profile_picture",
+        ]
+
+class FriendRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FriendRequest
+        fields = [
+            "id",
+            "sender",
+            "receiver",
+            "status",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "sender",
+            "status",
+            "created_at",
+        ]
+
+class FriendRequestListSerializer(serializers.ModelSerializer):
+    sender_username = serializers.CharField(
+        source="sender.username",
+        read_only=True,
+    )
+
+    class Meta:
+        model = FriendRequest
+        fields = [
+            "id",
+            "sender",
+            "sender_username",
+            "status",
+            "created_at",
+        ]
