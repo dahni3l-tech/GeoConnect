@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
+    FriendsListView,
     RegisterView,
     LoginView,
     ProfileView,
@@ -10,6 +11,8 @@ from .views import (
     UserSearchView,
     SendFriendRequestView,
     AcceptFriendRequestView,
+    RejectFriendRequestView,
+    FriendsListView,
 )
 
 urlpatterns = [
@@ -23,4 +26,10 @@ urlpatterns = [
     path( "users/search/", UserSearchView.as_view(), name="user_search"),
     path("friend-requests/", SendFriendRequestView.as_view(), name="friend_requests",),
     path("friend-requests/<int:pk>/accept/", AcceptFriendRequestView.as_view(), name="accept_friend_request",),
+    path("friend-requests/<int:pk>/reject/", RejectFriendRequestView.as_view(), name="reject_friend_request",),
+    path(
+    "friends/",
+    FriendsListView.as_view(),
+    name="friends_list",
+),
 ]

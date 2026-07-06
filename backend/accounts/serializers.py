@@ -134,3 +134,12 @@ class FriendRequestListSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
         ]
+
+class FriendSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "profile_picture",
+        ]

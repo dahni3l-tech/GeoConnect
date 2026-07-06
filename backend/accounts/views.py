@@ -26,6 +26,8 @@ from .serializers import (
     UserSearchSerializer,
     FriendRequestSerializer,
     FriendRequestListSerializer,
+    FriendSerializer,
+    
 )
 
 
@@ -219,14 +221,26 @@ class SendFriendRequestView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            if FriendRequest.objects.filter(
+            existing_request = FriendRequest.objects.filter(
                 sender=request.user,
                 receiver=receiver,
-            ).exists():
-                return Response(
-                    {"error": "Friend request already sent."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            ).first()
+
+            if existing_request:
+                if existing_request.status == "pending":
+                    return Response(
+                        {"error": "Friend request already sent."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                if existing_request.status == "accepted":
+                    return Response(
+                        {"error": "You are already friends."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Previous request was rejected, so remove it
+                existing_request.delete()
 
             serializer.save(sender=request.user)
 
@@ -263,3 +277,48 @@ class AcceptFriendRequestView(APIView):
         return Response(
             {"message": "Friend request accepted successfully."}
         )
+    
+class RejectFriendRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            friend_request = FriendRequest.objects.get(
+                id=pk,
+                receiver=request.user,
+                status="pending",
+            )
+
+        except FriendRequest.DoesNotExist:
+            return Response(
+                {"error": "Friend request not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        friend_request.delete()
+
+        return Response(
+            {"message": "Friend request rejected successfully."}
+        )
+    
+class FriendsListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        friendships = FriendRequest.objects.filter(
+            status="accepted",
+        ).filter(
+            Q(sender=request.user) | Q(receiver=request.user)
+        )
+
+        friends = []
+
+        for friendship in friendships:
+            if friendship.sender == request.user:
+                friends.append(friendship.receiver)
+            else:
+                friends.append(friendship.sender)
+
+        serializer = FriendSerializer(friends, many=True)
+
+        return Response(serializer.data)
