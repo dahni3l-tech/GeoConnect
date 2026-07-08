@@ -29,11 +29,6 @@ class LocationSerializer(serializers.ModelSerializer):
 
 
 class LocationCreateUpdateSerializer(serializers.ModelSerializer):
-    """
-    Serializer for creating and updating locations.
-    User is set from request context.
-    """
-
     class Meta:
         model = Location
         fields = [
@@ -45,11 +40,6 @@ class LocationCreateUpdateSerializer(serializers.ModelSerializer):
             "expires_at",
         ]
 
-    def create(self, validated_data):
-        validated_data["user"] = self.context["request"].user
-        return super().create(validated_data)
-
-
 class LocationHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = LocationHistory
@@ -58,6 +48,7 @@ class LocationHistorySerializer(serializers.ModelSerializer):
             "latitude",
             "longitude",
             "address",
+            "description",
             "timestamp",
         ]
         read_only_fields = ["id", "timestamp"]

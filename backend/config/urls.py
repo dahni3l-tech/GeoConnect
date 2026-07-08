@@ -1,3 +1,17 @@
+
+from django.contrib import admin
+from django.urls import include, path
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path("api/", include("accounts.urls")),
+    path("api/locations/", include("location.urls")),
+    path("api/messages/", include("messaging.urls")),
+]
+
+
+
+
 # """
 # URL configuration for config project.
 
@@ -15,11 +29,3 @@
 #     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 # """
 
-from django.contrib import admin
-from django.urls import include, path
-
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path("api/", include("accounts.urls")),
-    path("api/locations/", include("location.urls")),
-]

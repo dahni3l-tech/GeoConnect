@@ -1,6 +1,7 @@
 from flask import request
 
 
+
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -311,14 +312,19 @@ class FriendsListView(APIView):
             Q(sender=request.user) | Q(receiver=request.user)
         )
 
-        friends = []
+        friends = {}
 
         for friendship in friendships:
             if friendship.sender == request.user:
-                friends.append(friendship.receiver)
+                friends[friendship.receiver.id] = friendship.receiver
             else:
-                friends.append(friendship.sender)
+                friends[friendship.sender.id] = friendship.sender
 
-        serializer = FriendSerializer(friends, many=True)
+        serializer = FriendSerializer(
+            friends.values(),
+            many=True,
+        )
 
         return Response(serializer.data)
+
+        # It should send authorization as bearer token in the header of the request.to rest password

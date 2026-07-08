@@ -29,7 +29,26 @@ class LocationListCreateView(generics.ListCreateAPIView):
         return LocationSerializer
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        location, created = Location.objects.update_or_create(
+            user=self.request.user,
+            defaults={
+                "latitude": serializer.validated_data["latitude"],
+                "longitude": serializer.validated_data["longitude"],
+                "address": serializer.validated_data.get("address", ""),
+                "description": serializer.validated_data.get("description", ""),
+                "privacy": serializer.validated_data.get("privacy", "friends"),
+                "expires_at": serializer.validated_data.get("expires_at"),
+            },
+        )
+        
+        print("Creating location history...")
+        LocationHistory.objects.create(
+            user=self.request.user,
+            latitude=location.latitude,
+            longitude=location.longitude,
+            address=location.address,
+            description=location.description,
+        )
 
     def post(self, request, *args, **kwargs):
         """
