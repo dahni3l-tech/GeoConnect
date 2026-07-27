@@ -10,11 +10,27 @@ class User(AbstractUser):
         blank=True,
         null=True
     )
+    latitude = models.FloatField(
+        null=True,
+        blank=True
+    )
+
+    longitude = models.FloatField(
+        null=True,
+        blank=True
+    )
+
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True
+    )
     is_email_verified = models.BooleanField(default=False)
-    is_premium = models.BooleanField(default=False)
+    # is_premium = models.BooleanField(default=False)
 
     def __str__(self):
         return self.username
+
+    
     
 class FriendRequest(models.Model):
     STATUS_CHOICES = [
@@ -22,7 +38,8 @@ class FriendRequest(models.Model):
         ("accepted", "Accepted"),
         ("rejected", "Rejected"),
     ]
-
+# RNING: This is a development server. Do not use it in a production setting. Use a production WSGI or ASGI server instead.
+# For more information on production servers see: https://docs.djangoproject.com/en/6.0/howto/deployment/
     sender = models.ForeignKey(
         User,
         on_delete=models.CASCADE,

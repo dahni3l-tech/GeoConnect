@@ -44,11 +44,11 @@ INSTALLED_APPS = [
 
     # Local Apps, basically the apps i created
     'accounts',
-    'friends',
-    'location',
-    'premium',
-    'notifications',
-    'messaging',
+    # 'friends',
+    # 'location',
+    # 'premium',
+    # 'notifications',
+    # 'messaging',
 ]
 
 MIDDLEWARE = [
@@ -87,9 +87,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "geoconnect",
+        "USER": "root",
+        "PASSWORD": "Damilare@5",
+        "HOST": "127.0.0.1",
+        "PORT": "3306",
     }
 }
 

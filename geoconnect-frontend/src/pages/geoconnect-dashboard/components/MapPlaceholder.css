@@ -1,0 +1,121 @@
+/* ============================================================
+   Map Placeholder Component
+   ============================================================ */
+
+/* .map-placeholder {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  height: 320px;
+  position: relative;
+}
+
+.map-placeholder-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-animated-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.map-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: gridMove 20s linear infinite;
+}
+
+.map-rings {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(37, 99, 235, 0.1);
+}
+
+.ring-1 {
+  width: 100px;
+  height: 100px;
+  animation: ringPulse 3s ease-out infinite;
+}
+
+.ring-2 {
+  width: 200px;
+  height: 200px;
+  animation: ringPulse 3s ease-out infinite 1s;
+}
+
+.ring-3 {
+  width: 300px;
+  height: 300px;
+  animation: ringPulse 3s ease-out infinite 2s;
+}
+
+.map-placeholder-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 24px;
+}
+
+.map-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.1));
+  color: var(--primary-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  animation: float 3s ease-in-out infinite;
+}
+
+.map-placeholder-content h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.map-placeholder-content p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 280px;
+  margin: 0 auto;
+  line-height: 1.5;
+} */
+
+/* Responsive */
+/* @media (max-width: 768px) {
+  .map-placeholder {
+    height: 260px;
+  }
+} */
+
+
+.map-placeholder {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 18px;
+}

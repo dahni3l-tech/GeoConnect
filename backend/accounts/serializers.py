@@ -56,6 +56,7 @@ class LoginSerializer(serializers.Serializer):
         attrs["user"] = authenticated_user
 
         return attrs
+    
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -65,8 +66,12 @@ class ProfileSerializer(serializers.ModelSerializer):
             "email",
             "bio",
             "profile_picture",
-            "is_premium",
+            "ip_address",
+            "latitude",
+            "longitude"
+            # "is_premium",
         ]
+
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -99,7 +104,11 @@ class UserSearchSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "username",
+            "email",
             "profile_picture",
+            "ip_address",
+            "latitude",
+            "longitude",
         ]
 
 class FriendRequestSerializer(serializers.ModelSerializer):
@@ -125,12 +134,18 @@ class FriendRequestListSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    sender_email = serializers.CharField(
+        source="sender.email",
+        read_only=True,
+    )
+
     class Meta:
         model = FriendRequest
         fields = [
             "id",
             "sender",
             "sender_username",
+            "sender_email",
             "status",
             "created_at",
         ]
@@ -141,5 +156,17 @@ class FriendSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "username",
+            "email",
             "profile_picture",
+            "ip_address",
+            "latitude",
+            "longitude",
+        ]
+
+class UpdateLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "latitude",
+            "longitude",
         ]

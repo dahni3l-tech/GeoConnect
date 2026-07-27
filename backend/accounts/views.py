@@ -1,6 +1,8 @@
+
+
+
+
 from flask import request
-
-
 
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -28,6 +30,7 @@ from .serializers import (
     FriendRequestSerializer,
     FriendRequestListSerializer,
     FriendSerializer,
+    UpdateLocationSerializer,
     
 )
 
@@ -38,6 +41,9 @@ class RegisterView(generics.CreateAPIView):
 
 
 class LoginView(APIView):
+    # print("===== LOGIN HIT =====")
+    # i used to check if it was working
+    
     def post(self, request):
         print(request.data)
 
@@ -45,6 +51,10 @@ class LoginView(APIView):
 
         if serializer.is_valid():
             user = serializer.validated_data["user"]
+            ip = request.META.get("REMOTE_ADDR")
+
+            user.ip_address = ip
+            user.save()
 
             refresh = RefreshToken.for_user(user)
 
@@ -184,16 +194,28 @@ class UserSearchView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        query = request.GET.get("q", "")
+        query = request.GET.get("q", "").strip()
+
+        if not query:
+            return Response(
+                {"message": "Search query is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         users = User.objects.filter(
-            Q(username__icontains=query)
+            username__icontains=query
         ).exclude(id=request.user.id)
+
+        if not users.exists():
+            return Response(
+                {"message": "User not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         serializer = UserSearchSerializer(users, many=True)
 
         return Response(serializer.data)
-    
+        
 class SendFriendRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -328,3 +350,41 @@ class FriendsListView(APIView):
         return Response(serializer.data)
 
         # It should send authorization as bearer token in the header of the request.to rest password
+
+class UpdateIPAddressView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        ip = request.META.get("REMOTE_ADDR")
+
+        request.user.ip_address = ip
+        request.user.save()
+
+        return Response({
+            "message": "IP address updated successfully.",
+            "ip_address": request.user.ip_address,
+        })  
+
+class UpdateLocationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = UpdateLocationSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+
+            return Response({
+                "message": "Location updated successfully.",
+                "latitude": serializer.data["latitude"],
+                "longitude": serializer.data["longitude"],
+            })
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
+        )

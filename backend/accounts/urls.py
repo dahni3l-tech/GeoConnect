@@ -12,7 +12,8 @@ from .views import (
     SendFriendRequestView,
     AcceptFriendRequestView,
     RejectFriendRequestView,
-    FriendsListView,
+    UpdateIPAddressView,
+    UpdateLocationView,
 )
 
 urlpatterns = [
@@ -31,5 +32,15 @@ urlpatterns = [
     "friends/",
     FriendsListView.as_view(),
     name="friends_list",
+),
+    path(
+    "update-ip/",
+    UpdateIPAddressView.as_view(),
+    name="update_ip",
+),
+    path(
+    "update-location/",
+    UpdateLocationView.as_view(),
+    name="update_location",
 ),
 ]
