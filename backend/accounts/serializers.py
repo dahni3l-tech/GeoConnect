@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from .models import User, FriendRequest
+from cloudinary.utils import cloudinary_url 
 
 
 
@@ -58,6 +59,8 @@ class LoginSerializer(serializers.Serializer):
         return attrs
     
 class ProfileSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -68,9 +71,14 @@ class ProfileSerializer(serializers.ModelSerializer):
             "profile_picture",
             "ip_address",
             "latitude",
-            "longitude"
-            # "is_premium",
+            "longitude",
         ]
+
+    def get_profile_picture(self, obj):
+        if obj.profile_picture:
+            url, options = cloudinary_url(obj.profile_picture.public_id)
+            return url
+        return None     
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -99,6 +107,8 @@ class ChangePasswordSerializer(serializers.Serializer):
         return user
     
 class UserSearchSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -111,6 +121,11 @@ class UserSearchSerializer(serializers.ModelSerializer):
             "longitude",
         ]
 
+    def get_profile_picture(self, obj):
+        if obj.profile_picture:
+            return obj.profile_picture.url
+        return None
+    
 class FriendRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = FriendRequest
