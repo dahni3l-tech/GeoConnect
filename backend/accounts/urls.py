@@ -15,6 +15,7 @@ from .views import (
     UpdateIPAddressView,
     UpdateLocationView,
 )
+from notifications.views import RequestLocationView, RespondLocationRequestView
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
@@ -32,15 +33,25 @@ urlpatterns = [
     "friends/",
     FriendsListView.as_view(),
     name="friends_list",
-),
+    ),
     path(
     "update-ip/",
     UpdateIPAddressView.as_view(),
     name="update_ip",
-),
+    ),
     path(
     "update-location/",
     UpdateLocationView.as_view(),
     name="update_location",
-),
+    ),
+    path(
+    "request-location/",
+    RequestLocationView.as_view(),
+    name="request_location",
+    ),
+    path(
+    "location-requests/<int:pk>/respond/",
+    RespondLocationRequestView.as_view(),
+    name="respond_location_request",
+    ),
 ]

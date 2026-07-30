@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     # 'friends',
     # 'location',
     # 'premium',
-    # 'notifications',
+    'notifications',
     # 'messaging',
     'cloudinary',
     'cloudinary_storage',
@@ -154,6 +154,7 @@ STATIC_URL = 'static/'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://localhost:4173",
 ]
 
 MEDIA_URL = '/media/'

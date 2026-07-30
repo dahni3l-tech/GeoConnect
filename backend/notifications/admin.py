@@ -1,3 +1,9 @@
 from django.contrib import admin
+from .models import PushSubscription
 
-# Register your models here.
+
+@admin.register(PushSubscription)
+class PushSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ("user", "endpoint", "created_at")
+    search_fields = ("user__username", "endpoint")
+    readonly_fields = ("created_at",)
