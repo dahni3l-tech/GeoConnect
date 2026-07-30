@@ -1,9 +1,17 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   RiNotification3Line,
   RiSettings3Line,
   RiMenuLine,
+  RiCheckLine,
+  RiCloseLine,
 } from 'react-icons/ri';
+import { useState, useEffect, useRef } from 'react';
+import {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from '../../../services/pushNotificationService';
 import './Navbar.css';
 
 function Navbar({ user, toggleMobileMenu }) {
@@ -18,6 +26,91 @@ function Navbar({ user, toggleMobileMenu }) {
       if (hour < 18) return 'Good Afternoon';
       return 'Good Evening';
     };
+
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
+  const fetchNotifications = async () => {
+    setLoading(true);
+    try {
+      const data = await getNotifications();
+      setNotifications(data.results || []);
+      setUnreadCount(data.unread_count || 0);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleDropdown = () => {
+    setShowDropdown((prev) => !prev);
+  };
+
+  const handleMarkRead = async (e, notificationId) => {
+    e.stopPropagation();
+    try {
+      await markNotificationRead(notificationId);
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notificationId ? { ...n, is_read: true } : n
+        )
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error("Failed to mark all notifications as read:", err);
+    }
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
 
     return (
       <motion.header
@@ -38,19 +131,72 @@ function Navbar({ user, toggleMobileMenu }) {
         </div>
 
         <div className="navbar-right">
-          {/* ============================================================
-              TODO: API call — Fetch notifications
-              GET /api/notifications/
-              ============================================================ */}
-          <motion.button
-            className="nav-icon-btn"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            aria-label="Notifications"
-          >
-            <RiNotification3Line size={22} />
-            <span className="notification-badge">3</span>
-          </motion.button>
+          <div className="notification-wrapper" ref={dropdownRef}>
+            <motion.button
+              className="nav-icon-btn"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              aria-label="Notifications"
+              onClick={handleToggleDropdown}
+            >
+              <RiNotification3Line size={22} />
+              {unreadCount > 0 && (
+                <span className="notification-badge">{unreadCount}</span>
+              )}
+            </motion.button>
+
+            <AnimatePresence>
+              {showDropdown && (
+                <motion.div
+                  className="notification-dropdown"
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="notification-header">
+                    <h3>Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button className="mark-all-read-btn" onClick={handleMarkAllRead}>
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="notification-list">
+                    {loading && <div className="notification-loading">Loading...</div>}
+
+                    {!loading && notifications.length === 0 && (
+                      <div className="notification-empty">No notifications yet</div>
+                    )}
+
+                    {notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`notification-item ${notification.is_read ? 'read' : 'unread'}`}
+                        onClick={() => !notification.is_read && handleMarkRead(event, notification.id)}
+                      >
+                        <div className="notification-content">
+                          <p className="notification-title">{notification.title}</p>
+                          <p className="notification-message">{notification.message}</p>
+                          <span className="notification-time">{formatTime(notification.created_at)}</span>
+                        </div>
+                        {!notification.is_read && (
+                          <button
+                            className="mark-read-btn"
+                            onClick={(e) => handleMarkRead(e, notification.id)}
+                            title="Mark as read"
+                          >
+                            <RiCheckLine size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* <motion.button
             className="nav-icon-btn"

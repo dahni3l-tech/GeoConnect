@@ -91,3 +91,18 @@ export async function getPendingLocationRequests() {
   return response.data;
 }
 
+export async function getNotifications() {
+  const response = await api.get("notifications/notifications/");
+  return response.data;
+}
+
+export async function markNotificationRead(notificationId) {
+  const response = await api.post(`notifications/notifications/${notificationId}/read/`);
+  return response.data;
+}
+
+export async function markAllNotificationsRead() {
+  const response = await api.post("notifications/notifications/read-all/");
+  return response.data;
+}
+

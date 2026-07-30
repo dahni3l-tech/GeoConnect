@@ -3,8 +3,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import models
-from .models import PushSubscription, LocationRequest
-from accounts.models import FriendRequest
+from .models import PushSubscription, LocationRequest, Notification
+from .serializers import NotificationSerializer
+from accounts.models import FriendRequest, User, User
 from django.conf import settings
 from django.contrib.auth import get_user_model
 import json
@@ -210,3 +211,56 @@ class RespondLocationRequestView(APIView):
                 "status": location_request.status,
             }
         )
+
+
+class NotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        notifications = Notification.objects.filter(
+            recipient=request.user
+        ).select_related("recipient")[:100]
+
+        serializer = NotificationSerializer(notifications, many=True)
+        unread_count = Notification.objects.filter(
+            recipient=request.user, is_read=False
+        ).count()
+
+        return Response({
+            "count": notifications.count(),
+            "unread_count": unread_count,
+            "results": serializer.data,
+        })
+
+
+class MarkNotificationReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            notification = Notification.objects.get(
+                id=pk,
+                recipient=request.user,
+            )
+        except Notification.DoesNotExist:
+            return Response(
+                {"detail": "Notification not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+
+        return Response({"detail": "marked as read"})
+
+
+class MarkAllNotificationsReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        updated = Notification.objects.filter(
+            recipient=request.user, is_read=False
+        ).update(is_read=True)
+
+        return Response({"detail": f"{updated} notifications marked as read"})
+

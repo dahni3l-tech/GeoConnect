@@ -21,7 +21,8 @@ from django.utils.encoding import force_bytes
 from django.utils.encoding import force_str
 from django.db.models import Q
 from .models import User, FriendRequest
-from notifications.models import LocationRequest
+from notifications.models import LocationRequest, Notification, PushSubscription
+from notifications.views import send_push_notification
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -397,14 +398,61 @@ class OnlineStatusView(APIView):
 
     def post(self, request):
         is_online = request.data.get("is_online", True)
+        was_offline = not request.user.is_online
         request.user.is_online = bool(is_online)
         request.user.last_seen = timezone.now()
         request.user.save(update_fields=["is_online", "last_seen"])
+
+        if is_online and was_offline:
+            self._notify_friends_online(request.user)
 
         return Response({
             "is_online": request.user.is_online,
             "last_seen": request.user.last_seen,
         })
+
+    def _notify_friends_online(self, user):
+        friend_ids = FriendRequest.objects.filter(
+            models.Q(sender=user, status="accepted") |
+            models.Q(receiver=user, status="accepted")
+        ).values_list("sender_id", "receiver_id")
+
+        friends = set()
+        for sender_id, receiver_id in friend_ids:
+            if sender_id == user.id:
+                friends.add(receiver_id)
+            else:
+                friends.add(sender_id)
+
+        if not friends:
+            return
+
+        for friend_id in friends:
+            try:
+                friend = User.objects.get(id=friend_id)
+            except User.DoesNotExist:
+                continue
+
+            Notification.objects.create(
+                recipient=friend,
+                notification_type="friend_online",
+                title="Friend Online",
+                message=f"{user.username} is now online.",
+                data={"user_id": user.id, "username": user.username},
+            )
+
+            subscriptions = PushSubscription.objects.filter(user=friend)
+            for subscription in subscriptions:
+                send_push_notification(
+                    subscription=subscription,
+                    title="Friend Online",
+                    body=f"{user.username} is now online.",
+                    data={
+                        "type": "friend_online",
+                        "userId": user.id,
+                        "username": user.username,
+                    },
+                )
 
 
 class PendingLocationRequestsView(APIView):

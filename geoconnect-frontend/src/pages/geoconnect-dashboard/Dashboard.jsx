@@ -22,6 +22,7 @@ import {
   getSubscriptionStatus,
   updateOnlineStatus,
   getPendingLocationRequests,
+  getNotifications,
 } from "../../services/pushNotificationService";
 
 const ONLINE_HEARTBEAT_INTERVAL = 30000;
@@ -181,13 +182,27 @@ function Dashboard() {
     };
 
     fetchDashboardData();
-    heartbeatRef.current = setInterval(() => {
+
+    const sendHeartbeat = () => {
       updateOnlineStatus(true).catch(() => {});
-    }, ONLINE_HEARTBEAT_INTERVAL);
+    };
+
+    heartbeatRef.current = setInterval(sendHeartbeat, ONLINE_HEARTBEAT_INTERVAL);
+    sendHeartbeat();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        sendHeartbeat();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
 
     pendingRequestsRef.current = setInterval(async () => {
       try {
-        const pending = await getPendingLocationRequests();
+        const [pending, notifData] = await Promise.all([
+          getPendingLocationRequests(),
+          getNotifications().catch(() => ({ results: [], unread_count: 0 })),
+        ]);
         setPendingRequests(pending);
       } catch (err) {
         console.error("Failed to fetch pending requests:", err);
@@ -197,6 +212,7 @@ function Dashboard() {
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       if (pendingRequestsRef.current) clearInterval(pendingRequestsRef.current);
+      document.removeEventListener("visibilitychange", handleVisibility);
       stopLocationSharing();
       updateOnlineStatus(false).catch(() => {});
     };

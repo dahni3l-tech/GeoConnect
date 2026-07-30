@@ -11,6 +11,8 @@ function Friends() {
 
   useEffect(() => {
     loadFriends();
+    const interval = setInterval(loadFriends, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadFriends = async () => {
