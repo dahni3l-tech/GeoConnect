@@ -1,0 +1,21 @@
+{
+  "name": "GeoConnect",
+  "short_name": "GeoConnect",
+  "description": "GeoConnect - Share your location with friends",
+  "theme_color": "#863bff",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "48x46",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "icons.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

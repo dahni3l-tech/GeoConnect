@@ -1,10 +1,14 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { requestLocation } from "../services/locationRequestService";
 import "./styles/FriendDetails.css";
 
 function FriendDetails() {
   const { state } = useLocation();
   const friend = state?.friend;
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   if (!friend) {
     return (
@@ -13,6 +17,20 @@ function FriendDetails() {
       </div>
     );
   }
+
+  const handleRequestLocation = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      await requestLocation(friend.id);
+      alert("Location request sent!");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to send location request.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="friend-details-page">
@@ -75,6 +93,16 @@ function FriendDetails() {
         >
           Open Live Map
         </button>
+
+        <button
+          className="request-location-btn"
+          onClick={handleRequestLocation}
+          disabled={loading}
+        >
+          {loading ? "Sending..." : "Request Live Location"}
+        </button>
+
+        {error && <p className="error-text">{error}</p>}
 
       </div>
 

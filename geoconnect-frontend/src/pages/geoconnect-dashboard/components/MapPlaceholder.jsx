@@ -16,7 +16,29 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-function MapPlaceholder({ user }) {
+const createAvatarIcon = (image, username) => {
+  return L.divIcon({
+    className: "custom-avatar-marker",
+    html: `
+      <div class="avatar-marker">
+        ${
+          image
+            ? `<img src="${image}" alt="${username}" />`
+            : `<span>${username.charAt(0).toUpperCase()}</span>`
+        }
+      </div>
+    `,
+    iconSize: [56, 56],
+    iconAnchor: [28, 56],
+    popupAnchor: [0, -50],
+  });
+};
+
+function MapPlaceholder({ user, friends }) {
+  friends.forEach(friend => {
+  console.log(friend);
+});
+
   if (!user) return null;
 
   const latitude = user.latitude ?? 6.5244;
@@ -48,13 +70,39 @@ console.log("User:", user);
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <Marker position={[latitude, longitude]}>
+              <Marker
+        position={[latitude, longitude]}
+        icon={createAvatarIcon(
+          user.profile_picture,
+          user.username
+        )}
+      >
           <Popup>
             <strong>{user.username}</strong>
             <br />
             Your current location
           </Popup>
         </Marker>
+
+              {friends.map((friend) => (
+                <Marker
+          key={friend.id}
+          position={[
+            friend.latitude,
+            friend.longitude,
+          ]}
+          icon={createAvatarIcon(
+            friend.profile_picture,
+            friend.username
+          )}
+        >
+          <Popup>
+            <strong>{friend.username}</strong>
+            <br />
+            Friend's Location
+          </Popup>
+        </Marker>
+      ))}
       </MapContainer>
     </motion.div>
   );

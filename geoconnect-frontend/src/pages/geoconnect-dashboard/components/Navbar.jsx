@@ -10,6 +10,8 @@ function Navbar({ user, toggleMobileMenu }) {
     if (!user) {
     return null;
   }
+  console.log(user.profile_picture);
+  
     const getGreeting = () => {
       const hour = new Date().getHours();
       if (hour < 12) return 'Good Morning';
@@ -61,12 +63,17 @@ function Navbar({ user, toggleMobileMenu }) {
 
           <div className="user-avatar">
             {user.profile_picture ? (
-              <img src= {user.username} />
+              <img
+                src={user.profile_picture}
+                alt={user.username}
+                className="avatar-image"
+              />
             ) : (
               <div className="avatar-placeholder">
                 {user.username.charAt(0).toUpperCase()}
               </div>
             )}
+
             <span className="online-status" title="Online" />
           </div>
         </div>
