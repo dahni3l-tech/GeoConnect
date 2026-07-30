@@ -1,9 +1,3 @@
-import { precacheAndRoute } from 'workbox-precaching'
-
-if (self.__WB_MANIFEST) {
-  precacheAndRoute(self.__WB_MANIFEST)
-}
-
 self.addEventListener('push', (event) => {
   if (!event.data) {
     return

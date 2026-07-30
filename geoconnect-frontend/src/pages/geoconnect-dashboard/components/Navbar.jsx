@@ -11,6 +11,9 @@ import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  unsubscribeUser,
+  getSubscriptionStatus,
+  checkBackendSubscription,
 } from '../../../services/pushNotificationService';
 import './Navbar.css';
 
@@ -31,11 +34,36 @@ function Navbar({ user, toggleMobileMenu }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
     fetchNotifications();
+    checkPushSubscription();
   }, []);
+
+  const checkPushSubscription = async () => {
+    try {
+      const backendSubscribed = await checkBackendSubscription();
+      setPushSubscribed(backendSubscribed);
+    } catch (err) {
+      console.error("Failed to check push subscription:", err);
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    setLoading(true);
+    try {
+      await unsubscribeUser();
+      setPushSubscribed(false);
+      setShowDropdown(false);
+    } catch (err) {
+      console.error("Failed to unsubscribe:", err);
+      alert(err.message || "Failed to unsubscribe from notifications.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -193,6 +221,18 @@ function Navbar({ user, toggleMobileMenu }) {
                       </div>
                     ))}
                   </div>
+
+                  {pushSubscribed && (
+                    <div className="notification-footer">
+                      <button
+                        className="unsubscribe-btn"
+                        onClick={handleUnsubscribe}
+                        disabled={loading}
+                      >
+                        {loading ? "Unsubscribing..." : "Unsubscribe from Notifications"}
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

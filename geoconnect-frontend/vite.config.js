@@ -9,7 +9,7 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.js',
-      registerType: 'prompt',
+      registerType: 'auto',
       includeAssets: ['favicon.svg', 'icons.svg'],
       manifest: {
         name: 'GeoConnect',

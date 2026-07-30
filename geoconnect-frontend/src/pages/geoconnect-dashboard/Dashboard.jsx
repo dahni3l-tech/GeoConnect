@@ -20,6 +20,7 @@ import {
   respondToLocationRequest,
   subscribeUser,
   getSubscriptionStatus,
+  checkBackendSubscription,
   updateOnlineStatus,
   getPendingLocationRequests,
   getNotifications,
@@ -39,6 +40,7 @@ function Dashboard() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
+  const [checkingSubscription, setCheckingSubscription] = useState(true);
   const [sharingLocation, setSharingLocation] = useState(false);
   const lastLocation = useRef(null);
   const locationIntervalRef = useRef(null);
@@ -185,6 +187,7 @@ function Dashboard() {
 
     const sendHeartbeat = () => {
       updateOnlineStatus(true).catch(() => {});
+      console.log("[Dashboard] Heartbeat sent to server to indicate online status.");
     };
 
     heartbeatRef.current = setInterval(sendHeartbeat, ONLINE_HEARTBEAT_INTERVAL);
@@ -221,17 +224,57 @@ function Dashboard() {
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
   useEffect(() => {
-    if (!("Notification" in window)) return;
-    setNotificationsEnabled(Notification.permission === "granted");
+    let mounted = true;
+    let intervalId;
+
+    async function checkSubscription() {
+      try {
+        const backendSubscribed = await checkBackendSubscription();
+        console.log("[Dashboard] Backend subscription:", backendSubscribed);
+        
+        if (mounted) {
+          setNotificationsEnabled(backendSubscribed);
+          setCheckingSubscription(false);
+        }
+      } catch (err) {
+        console.error("[Dashboard] Failed to check backend subscription:", err);
+        if (mounted) {
+          setNotificationsEnabled(false);
+          setCheckingSubscription(false);
+        }
+      }
+    }
+
+    checkSubscription();
+    intervalId = setInterval(checkSubscription, 5000);
+
+    return () => {
+      mounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
+  useEffect(() => {
+    if (!checkingSubscription && !notificationsEnabled) {
+      console.log("[Dashboard] Notifications button visible - backend says not subscribed");
+    } else if (!checkingSubscription && notificationsEnabled) {
+      console.log("[Dashboard] Notifications button hidden - backend says subscribed");
+    }
+  }, [checkingSubscription, notificationsEnabled]);
+
   const handleEnableNotifications = async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      alert("Push notifications are not supported in this browser.");
+      return;
+    }
+
     setNotificationLoading(true);
     try {
       await subscribeUser();
       setNotificationsEnabled(true);
     } catch (err) {
       console.error("Failed to enable notifications:", err);
+      alert(err.message || "Failed to enable notifications. Please try again.");
     } finally {
       setNotificationLoading(false);
     }
@@ -244,7 +287,7 @@ function Dashboard() {
         toggleMobile={toggleMobileMenu}
       />
 
-      <div className="dashboard-main">
+      <div className={`dashboard-main ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
         <Navbar user={user} toggleMobileMenu={toggleMobileMenu} />
 
         <motion.main
@@ -288,7 +331,7 @@ function Dashboard() {
           onStopSharing={stopLocationSharing}
         />
 
-        {!notificationsEnabled && (
+        {!checkingSubscription && !notificationsEnabled && (
           <motion.button
             className="notification-enable-btn"
             onClick={handleEnableNotifications}

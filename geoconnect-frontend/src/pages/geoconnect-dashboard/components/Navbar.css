@@ -13,7 +13,7 @@
   padding: 0 32px;
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 1000;
   box-shadow: var(--shadow-sm);
 }
 
@@ -121,7 +121,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 60;
+  z-index: 9999;
 }
 
 .notification-header {
@@ -235,6 +235,35 @@
 
 .mark-read-btn:hover {
   background: rgba(16, 185, 129, 0.2);
+}
+
+.notification-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
+}
+
+.unsubscribe-btn {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--danger-red);
+  background: rgba(239, 68, 68, 0.06);
+  color: var(--danger-red);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.unsubscribe-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.unsubscribe-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .user-avatar {
