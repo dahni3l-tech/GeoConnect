@@ -11,6 +11,7 @@ import Settings from './pages/Settings';
 import FriendDetails from "./pages/FriendDetails";
 import FriendMap from "./pages/FriendMap";
 import Premium from "./pages/Premium/Premium";
+import LocationRequest from "./pages/LocationRequest";
 function App() {
     return (
         <Routes>
@@ -26,6 +27,7 @@ function App() {
             <Route path="/friends/:id" element={<FriendDetails />} />
             <Route path="/friends/:id/map" element={<FriendMap />} />
             <Route path="/premium" element={<Premium />} />
+            <Route path="/location-request" element={<LocationRequest />} />
         </Routes>
     );
 }

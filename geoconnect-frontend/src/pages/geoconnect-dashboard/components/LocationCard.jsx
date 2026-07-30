@@ -1,52 +1,43 @@
 import { motion } from 'framer-motion'; 
-import { updateLocation } from "../../../services/locationService";
 import { getProfile } from "../../../services/profileService";
 import {
   RiMapPinLine,
   RiWifiLine,
   RiUserLocationLine,
   RiRefreshLine,
+  RiShareLine,
 } from 'react-icons/ri';
 import './LocationCard.css';
 
-function LocationCard({ user, setUser }) {
+function LocationCard({ user, setUser, sharingLocation, onStartSharing, onStopSharing }) {
   if (!user) {
     return null;
-}
-  /* ============================================================
-     TODO: API call — Refresh user location
-     POST /api/location/refresh/
-     ============================================================ */
-  const handleRefreshLocation = () => {
-  if (!navigator.geolocation) {
-    alert("Geolocation is not supported by this browser.");
-    return;
   }
 
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      try {
-        await updateLocation(
-          position.coords.latitude,
-          position.coords.longitude
-        );
-
-        const updatedProfile = await getProfile();
-
-        setUser(updatedProfile);
-
-        alert("Location refreshed successfully!");
-      } catch (error) {
-        console.error(error);
-        alert("Failed to refresh location.");
-      }
-    },
-    (error) => {
-      console.error(error);
-      alert("Unable to access your location.");
+  const handleRefreshLocation = async () => {
+    if (!navigator.geolocation) {
+      return;
     }
-  );
-};
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          await updateLocation(
+            position.coords.latitude,
+            position.coords.longitude
+          );
+
+          const updatedProfile = await getProfile();
+          setUser(updatedProfile);
+        } catch (error) {
+          console.error(error);
+        }
+      },
+      (error) => {
+        console.error(error);
+      }
+    );
+  };
 
   return (
     <motion.div
@@ -62,9 +53,9 @@ function LocationCard({ user, setUser }) {
           </div>
           <h3>Current Location</h3>
         </div>
-        <div className="location-status active">
+        <div className={`location-status ${sharingLocation ? "active" : "inactive"}`}>
           <span className="pulse-dot" />
-          Active
+          {sharingLocation ? "Sharing Live" : "Idle"}
         </div>
       </div>
 
@@ -106,15 +97,39 @@ function LocationCard({ user, setUser }) {
         </div>
       </div>
 
-      <motion.button
-        className="refresh-location-btn"
-        onClick={handleRefreshLocation}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <RiRefreshLine size={18} />
-        Refresh Location
-      </motion.button>
+      <div className="location-actions">
+        <motion.button
+          className="refresh-location-btn"
+          onClick={handleRefreshLocation}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <RiRefreshLine size={18} />
+          Refresh
+        </motion.button>
+
+        {!sharingLocation ? (
+          <motion.button
+            className="share-location-btn"
+            onClick={onStartSharing}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <RiShareLine size={18} />
+            Start Sharing
+          </motion.button>
+        ) : (
+          <motion.button
+            className="stop-sharing-btn"
+            onClick={onStopSharing}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <RiShareLine size={18} />
+            Stop Sharing
+          </motion.button>
+        )}
+      </div>
     </motion.div>
   );
 }

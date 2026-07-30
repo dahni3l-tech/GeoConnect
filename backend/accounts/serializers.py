@@ -72,6 +72,8 @@ class ProfileSerializer(serializers.ModelSerializer):
             "ip_address",
             "latitude",
             "longitude",
+            "is_online",
+            "last_seen",
         ]
 
     def get_profile_picture(self, obj):
@@ -119,6 +121,8 @@ class UserSearchSerializer(serializers.ModelSerializer):
             "ip_address",
             "latitude",
             "longitude",
+            "is_online",
+            "last_seen",
         ]
 
     def get_profile_picture(self, obj):
@@ -176,6 +180,8 @@ class FriendSerializer(serializers.ModelSerializer):
             "ip_address",
             "latitude",
             "longitude",
+            "is_online",
+            "last_seen",
         ]
 
 class UpdateLocationSerializer(serializers.ModelSerializer):

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriends } from "../services/friendService";
+import { requestLocation } from "../services/locationRequestService";
 import "./styles/Friends.css";
 
 function Friends() {
   const [friends, setFriends] = useState([]);
+  const [loadingRequestId, setLoadingRequestId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,11 +16,38 @@ function Friends() {
   const loadFriends = async () => {
     try {
       const data = await getFriends();
-      console.log(data);
       setFriends(data);
     } catch (error) {
       console.log(error);
     }
+  };
+
+  const handleRequestLocation = async (friendId) => {
+    setLoadingRequestId(friendId);
+    try {
+      await requestLocation(friendId);
+    } catch (error) {
+      console.error("Failed to request location:", error);
+    } finally {
+      setLoadingRequestId(null);
+    }
+  };
+
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return "Offline";
+    const date = new Date(lastSeen);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return "Online";
+    if (diffMins < 60) return `Last seen ${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `Last seen ${diffDays}d ago`;
   };
 
   return (
@@ -67,36 +96,19 @@ function Friends() {
                     </span>
                   )}
                 </div>
-                <span className="online-indicator" title="Online"></span>
+                <span
+                  className={`online-indicator ${friend.is_online ? "online" : "offline"}`}
+                  title={formatLastSeen(friend.last_seen)}
+                />
               </div>
 
               <div className="friend-name-row">
                 <h3>{friend.username}</h3>
-                <span className="premium-badge" title="Premium">⭐</span>
               </div>
 
-              <p className="friend-bio">Exploring the world, one step at a time.</p>
-
-              <div className="friend-meta">
-                <span className="meta-chip">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                  Lagos
-                </span>
-                <span className="meta-chip">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                  </svg>
-                  Walking
-                </span>
-                <span className="meta-chip">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  2 mins ago
+              <div className="friend-status">
+                <span className={`status-badge ${friend.is_online ? "online" : "offline"}`}>
+                  {friend.is_online ? "Online" : formatLastSeen(friend.last_seen)}
                 </span>
               </div>
             </div>
@@ -112,23 +124,14 @@ function Friends() {
                   })
                 }
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
                 View Profile
               </button>
-              <button className="action-btn action-btn--secondary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                </svg>
-                Message
-              </button>
-              <button className="action-btn action-btn--secondary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="3 11 22 2 13 21 11 13 3 11" />
-                </svg>
-                Locate
+              <button
+                className="action-btn action-btn--secondary"
+                onClick={() => handleRequestLocation(friend.id)}
+                disabled={loadingRequestId === friend.id}
+              >
+                {loadingRequestId === friend.id ? "Sending..." : "Get Location"}
               </button>
             </div>
           </div>

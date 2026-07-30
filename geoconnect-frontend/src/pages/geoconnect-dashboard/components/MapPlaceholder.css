@@ -118,6 +118,13 @@
     width: 100%;
     overflow: hidden;
     border-radius: 18px;
+    background: var(--card-bg);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+}
+
+.map-placeholder.map-full-width {
+    height: 420px;
 }
 
 .avatar-marker {

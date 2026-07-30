@@ -20,7 +20,8 @@ self.addEventListener('push', (event) => {
     icon: '/favicon.svg',
     badge: '/favicon.svg',
     data: data.data || data,
-    requireInteraction: false,
+    requireInteraction: true,
+    tag: data.data?.requestId ? `location-request-${data.data.requestId}` : undefined,
   }
 
   event.waitUntil(self.registration.showNotification(title, options))
@@ -33,7 +34,7 @@ self.addEventListener('notificationclick', (event) => {
   const isLocationRequest = data.type === "location_request"
 
   const url = isLocationRequest
-    ? `/dashboard?requestId=${data.requestId}&senderId=${data.senderId}&senderUsername=${encodeURIComponent(data.senderUsername || "")}`
+    ? `/location-request?requestId=${data.requestId}&senderId=${data.senderId}&senderUsername=${encodeURIComponent(data.senderUsername || "")}`
     : data.url || "/"
 
   event.waitUntil(

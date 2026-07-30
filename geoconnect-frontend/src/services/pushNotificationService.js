@@ -77,3 +77,17 @@ export async function respondToLocationRequest(requestId, status) {
 
   return response.data;
 }
+
+export async function updateOnlineStatus(isOnline) {
+  const response = await api.post("online-status/", {
+    is_online: isOnline,
+  });
+
+  return response.data;
+}
+
+export async function getPendingLocationRequests() {
+  const response = await api.get("location-requests/pending/");
+  return response.data;
+}
+

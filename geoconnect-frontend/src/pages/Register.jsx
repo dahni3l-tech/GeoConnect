@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
-import AuthLayout from "./Authlayout";
-import "./styles/AuthLayout.css";
+import Authlayout from "./Authlayout";
+import "./styles/Authlayout.css";
 import "./styles/Register.css";
 
 function Register() {

@@ -29,7 +29,8 @@ class User(AbstractUser):
         blank=True
     )
     is_email_verified = models.BooleanField(default=False)
-    # is_premium = models.BooleanField(default=False)
+    is_online = models.BooleanField(default=False)
+    last_seen = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.username

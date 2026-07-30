@@ -18,6 +18,23 @@ function FriendDetails() {
     );
   }
 
+  const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return "Offline";
+    const date = new Date(lastSeen);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return "Online";
+    if (diffMins < 60) return `Last seen ${diffMins}m ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `Last seen ${diffDays}d ago`;
+  };
+
   const handleRequestLocation = async () => {
     setLoading(true);
     setError("");
@@ -56,6 +73,13 @@ function FriendDetails() {
         </div>
 
         <h1>{friend.username}</h1>
+
+        <div className="friend-status-badge">
+          <span className={`status-dot ${friend.is_online ? "online" : "offline"}`} />
+          <span className="status-text">
+            {friend.is_online ? "Online" : formatLastSeen(friend.last_seen)}
+          </span>
+        </div>
 
         <div className="friend-info">
 

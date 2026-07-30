@@ -14,13 +14,15 @@ from .views import (
     RejectFriendRequestView,
     UpdateIPAddressView,
     UpdateLocationView,
+    OnlineStatusView,
+    PendingLocationRequestsView,
 )
 from notifications.views import RequestLocationView, RespondLocationRequestView
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", LoginView.as_view(), name="login"),
-    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("token/refresh/", TokenObtainPairView.as_view(), name="token_refresh"),
     path("profile/", ProfileView.as_view(), name="profile"),
     path("change-password/", ChangePasswordView.as_view(), name="change_password"),
     path("forgot-password/", ForgotPasswordView.as_view(), name="forgot_password"),
@@ -53,5 +55,15 @@ urlpatterns = [
     "location-requests/<int:pk>/respond/",
     RespondLocationRequestView.as_view(),
     name="respond_location_request",
+    ),
+    path(
+    "online-status/",
+    OnlineStatusView.as_view(),
+    name="online_status",
+    ),
+    path(
+    "location-requests/pending/",
+    PendingLocationRequestsView.as_view(),
+    name="pending_location_requests",
     ),
 ]

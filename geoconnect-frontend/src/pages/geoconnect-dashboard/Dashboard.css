@@ -75,6 +75,14 @@
   margin: 0 auto;
 }
 
+.map-full-width {
+  grid-column: 1 / -1;
+}
+
+.map-full-width .map-placeholder {
+  height: 420px;
+}
+
 .dashboard-left-column,
 .dashboard-right-column {
   display: flex;
@@ -184,6 +192,10 @@
 
   .dashboard-grid {
     gap: 16px;
+  }
+
+  .map-full-width .map-placeholder {
+    height: 280px;
   }
 
   .fab {

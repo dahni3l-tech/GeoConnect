@@ -109,6 +109,36 @@
   letter-spacing: -0.5px;
 }
 
+/* ─── Status Badge ─── */
+.friend-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.friend-status-badge .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.friend-status-badge .status-dot.online {
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+}
+
+.friend-status-badge .status-dot.offline {
+  background: #6b7280;
+}
+
+.friend-status-badge .status-text {
+  color: #cbd5e1;
+}
+
 /* ─── Info Grid ─── */
 .friend-info {
   width: 100%;

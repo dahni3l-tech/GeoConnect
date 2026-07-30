@@ -34,7 +34,7 @@ const createAvatarIcon = (image, username) => {
   });
 };
 
-function MapPlaceholder({ user, friends }) {
+function MapPlaceholder({ user, friends, className }) {
   friends.forEach(friend => {
   console.log(friend);
 });
@@ -50,7 +50,7 @@ console.log("User:", user);
 
   return (
     <motion.div
-      className="map-placeholder"
+      className={`map-placeholder ${className || ""}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.5 }}
@@ -60,7 +60,7 @@ console.log("User:", user);
         zoom={15}
         scrollWheelZoom={true}
         style={{
-          height: "350px",
+          height: "100%",
           width: "100%",
           borderRadius: "18px",
         }}
@@ -77,12 +77,12 @@ console.log("User:", user);
           user.username
         )}
       >
-          <Popup>
-            <strong>{user.username}</strong>
-            <br />
-            Your current location
-          </Popup>
-        </Marker>
+        <Popup>
+          <strong>{user.username}</strong>
+          <br />
+          Your current location
+        </Popup>
+      </Marker>
 
               {friends.map((friend) => (
                 <Marker

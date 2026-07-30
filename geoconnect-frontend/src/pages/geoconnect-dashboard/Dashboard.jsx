@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiMapPinLine, RiNotification3Line } from 'react-icons/ri';
 import { useSearchParams } from "react-router-dom";
@@ -8,7 +8,6 @@ import Navbar from './components/Navbar';
 import ProfileCard from './components/ProfileCard';
 import StatsCards from './components/StatsCards';
 import QuickActions from './components/QuickActions';
-// import ActivityFeed from './components/ActivityFeed';
 import LocationCard from './components/LocationCard';
 import MapPlaceholder from './components/MapPlaceholder';
 import { getProfile } from "../../services/profileService";
@@ -17,8 +16,17 @@ import {
   getFriendRequests,
 } from "../../services/friendService";
 import { updateLocation } from "../../services/locationService";
-import { respondToLocationRequest, subscribeUser, getSubscriptionStatus } from "../../services/pushNotificationService";
+import {
+  respondToLocationRequest,
+  subscribeUser,
+  getSubscriptionStatus,
+  updateOnlineStatus,
+  getPendingLocationRequests,
+} from "../../services/pushNotificationService";
 
+const ONLINE_HEARTBEAT_INTERVAL = 30000;
+const LOCATION_UPDATE_INTERVAL = 30000;
+const PENDING_REQUESTS_POLL_INTERVAL = 15000;
 
 function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -30,7 +38,64 @@ function Dashboard() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
+  const [sharingLocation, setSharingLocation] = useState(false);
   const lastLocation = useRef(null);
+  const locationIntervalRef = useRef(null);
+  const heartbeatRef = useRef(null);
+  const pendingRequestsRef = useRef(null);
+
+  const startLocationSharing = useCallback(() => {
+    if (locationIntervalRef.current) return;
+
+    const update = async () => {
+      if (!navigator.geolocation) return;
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const newLat = position.coords.latitude;
+            const newLng = position.coords.longitude;
+
+            if (
+              lastLocation.current &&
+              Math.abs(lastLocation.current.lat - newLat) < 0.00005 &&
+              Math.abs(lastLocation.current.lng - newLng) < 0.00005
+            ) {
+              return;
+            }
+
+            await updateLocation(newLat, newLng);
+            lastLocation.current = { lat: newLat, lng: newLng };
+
+            const profile = await getProfile();
+            setUser(profile);
+          } catch (error) {
+            console.error("Failed to update location:", error);
+          }
+        },
+        (error) => {
+          console.error("Unable to get your location:", error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    };
+
+    update();
+    locationIntervalRef.current = setInterval(update, LOCATION_UPDATE_INTERVAL);
+    setSharingLocation(true);
+  }, []);
+
+  const stopLocationSharing = useCallback(() => {
+    if (locationIntervalRef.current) {
+      clearInterval(locationIntervalRef.current);
+      locationIntervalRef.current = null;
+    }
+    setSharingLocation(false);
+  }, []);
 
   useEffect(() => {
     const requestId = searchParams.get("requestId");
@@ -54,6 +119,7 @@ function Dashboard() {
             );
 
             await respondToLocationRequest(requestId, "accepted");
+            startLocationSharing();
           } catch (err) {
             console.error("Failed to update location:", err);
             await respondToLocationRequest(requestId, "rejected");
@@ -72,139 +138,90 @@ function Dashboard() {
     };
 
     handleLocationRequest();
-  }, [searchParams]);
-
-  // i wanted to put recent activities here but i don't think i need it right now so i'm commenting it out for now
-  // const [activities] = useState([
-  //   { id: 1, type: 'login', message: 'Logged In', timestamp: '2 mins ago' },
-  //   { id: 2, type: 'location', message: 'Location Updated', timestamp: '15 mins ago' },
-  //   { id: 3, type: 'friend_request', message: 'Friend Request Sent', timestamp: '1 hour ago' },
-  //   { id: 4, type: 'friend_accept', message: 'Friend Request Accepted', timestamp: '3 hours ago' },
-  //   { id: 5, type: 'refresh', message: 'Location Refreshed', timestamp: '5 hours ago' },
-  // ]);
+  }, [searchParams, startLocationSharing]);
 
   useEffect(() => {
-  const fetchDashboardData = async () => {
-    try {
-      const [profile, friendsData, requestsData] = await Promise.all([
-        getProfile(),
-        getFriends(),
-        getFriendRequests(),
-      ]);
-
-      setUser(profile);
-      setFriends(friendsData);
-      setPendingRequests(requestsData);
-
-      if (navigator.geolocation) {
-        // just so i don't forget this is what triggers that allow location stuff
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
+    const fetchDashboardData = async () => {
       try {
-        await updateLocation(
-          position.coords.latitude,
-          position.coords.longitude
-        );
+        const [profile, friendsData, requestsData] = await Promise.all([
+          getProfile(),
+          getFriends(),
+          getFriendRequests(),
+        ]);
 
-        const updatedProfile = await getProfile();
-        setUser(updatedProfile);
-      } catch (err) {
-        console.error("Failed to update location:", err);
+        setUser(profile);
+        setFriends(friendsData);
+        setPendingRequests(requestsData);
+
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              try {
+                await updateLocation(
+                  position.coords.latitude,
+                  position.coords.longitude
+                );
+
+                const updatedProfile = await getProfile();
+                setUser(updatedProfile);
+              } catch (err) {
+                console.error("Failed to update location:", err);
+              }
+            },
+            (error) => {
+              console.log("Location permission denied.", error);
+            }
+          );
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
       }
-    },
-    (error) => {
-      console.log("Location permission denied.", error);
-    }
-  );
-}
+    };
 
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
+    fetchDashboardData();
+    heartbeatRef.current = setInterval(() => {
+      updateOnlineStatus(true).catch(() => {});
+    }, ONLINE_HEARTBEAT_INTERVAL);
+
+    pendingRequestsRef.current = setInterval(async () => {
+      try {
+        const pending = await getPendingLocationRequests();
+        setPendingRequests(pending);
+      } catch (err) {
+        console.error("Failed to fetch pending requests:", err);
+      }
+    }, PENDING_REQUESTS_POLL_INTERVAL);
+
+    return () => {
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      if (pendingRequestsRef.current) clearInterval(pendingRequestsRef.current);
+      stopLocationSharing();
+      updateOnlineStatus(false).catch(() => {});
+    };
+  }, [stopLocationSharing]);
+
+  const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
+
+  useEffect(() => {
+    if (!("Notification" in window)) return;
+    setNotificationsEnabled(Notification.permission === "granted");
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    setNotificationLoading(true);
+    try {
+      await subscribeUser();
+      setNotificationsEnabled(true);
+    } catch (err) {
+      console.error("Failed to enable notifications:", err);
     } finally {
-      setLoading(false);
+      setNotificationLoading(false);
     }
   };
 
-  fetchDashboardData();
-  const interval = setInterval(() => {
-  handleRefreshLocation();
-}, 30000);
-
-return () => clearInterval(interval);
-
-}, [
-  
-]);
-
-
-const handleRefreshLocation = async () => {
-  if (!navigator.geolocation) {
-    console.error("Geolocation is not supported by your browser.");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      try {
-        const newLat = position.coords.latitude;
-        const newLng = position.coords.longitude;
-
-        if (
-          lastLocation.current &&
-          Math.abs(lastLocation.current.lat - newLat) < 0.00005 &&
-          Math.abs(lastLocation.current.lng - newLng) < 0.00005
-        ) {
-          console.log("📍 Location unchanged.");
-          return;
-        }
-
-        await updateLocation(newLat, newLng);
-
-        lastLocation.current = {
-          lat: newLat,
-          lng: newLng,
-        };
-
-        const profile = await getProfile();
-        setUser(profile);
-
-        console.log("📍 Location updated.");
-      } catch (error) {
-        console.error("Failed to update location:", error);
-      }
-    },
-    (error) => {
-      console.error("Unable to get your location:", error);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    }
-  );
-};
-
-
-   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
-
-   useEffect(() => {
-     if (!("Notification" in window)) return;
-     setNotificationsEnabled(Notification.permission === "granted");
-   }, []);
-
-   const handleEnableNotifications = async () => {
-     setNotificationLoading(true);
-     try {
-       await subscribeUser();
-       setNotificationsEnabled(true);
-     } catch (err) {
-       console.error("Failed to enable notifications:", err);
-     } finally {
-       setNotificationLoading(false);
-     }
-   };
-
-   return (
+  return (
     <div className="dashboard-container">
       <Sidebar
         mobileOpen={mobileMenuOpen}
@@ -221,6 +238,8 @@ const handleRefreshLocation = async () => {
           transition={{ duration: 0.5, ease: 'easeOut' }}
         >
           <div className="dashboard-grid">
+            <MapPlaceholder user={user} friends={friends} className="map-full-width" />
+
             <div className="dashboard-left-column">
               <ProfileCard user={user} />
               <StatsCards
@@ -229,23 +248,29 @@ const handleRefreshLocation = async () => {
                 pendingRequests={pendingRequests}
               />
               <QuickActions />
-              
             </div>
 
             <div className="dashboard-right-column">
               <LocationCard
                   user={user}
                   setUser={setUser}
+                  sharingLocation={sharingLocation}
+                  onStartSharing={startLocationSharing}
+                  onStopSharing={stopLocationSharing}
               />
-              {/* <ActivityFeed activities={activities} /> */}
-              <MapPlaceholder user={user} friends={friends} />
             </div>
           </div>
         </motion.main>
 
         <FloatingActionButton
-    onRefresh={handleRefreshLocation}
-/>
+          onRefresh={() => {
+            if (!sharingLocation) {
+              startLocationSharing();
+            }
+          }}
+          sharingLocation={sharingLocation}
+          onStopSharing={stopLocationSharing}
+        />
 
         {!notificationsEnabled && (
           <motion.button
@@ -278,11 +303,10 @@ const handleRefreshLocation = async () => {
   );
 }
 
-// this is the rrfresh location stuff
-function FloatingActionButton({ onRefresh }) {
+function FloatingActionButton({ onRefresh, sharingLocation, onStopSharing }) {
   return (
     <motion.button
-      className="fab"
+      className={`fab ${sharingLocation ? "sharing" : ""}`}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       initial={{ scale: 0 }}
@@ -293,14 +317,14 @@ function FloatingActionButton({ onRefresh }) {
         stiffness: 260,
         damping: 20,
       }}
-      aria-label="Refresh Location"
-      onClick={onRefresh}
+      aria-label={sharingLocation ? "Stop Sharing Location" : "Start Sharing Location"}
+      onClick={sharingLocation ? onStopSharing : onRefresh}
+      title={sharingLocation ? "Stop sharing location" : "Start sharing location"}
     >
       <RiMapPinLine size={24} />
     </motion.button>
   );
+
 }
 
-
-
-export default Dashboard;   
+export default Dashboard;

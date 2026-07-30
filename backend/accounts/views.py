@@ -12,6 +12,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
+from django.utils import timezone
 from django.utils.http import (
     urlsafe_base64_encode,
     urlsafe_base64_decode,
@@ -20,6 +21,7 @@ from django.utils.encoding import force_bytes
 from django.utils.encoding import force_str
 from django.db.models import Q
 from .models import User, FriendRequest
+from notifications.models import LocationRequest
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -388,3 +390,41 @@ class UpdateLocationView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+
+class OnlineStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        is_online = request.data.get("is_online", True)
+        request.user.is_online = bool(is_online)
+        request.user.last_seen = timezone.now()
+        request.user.save(update_fields=["is_online", "last_seen"])
+
+        return Response({
+            "is_online": request.user.is_online,
+            "last_seen": request.user.last_seen,
+        })
+
+
+class PendingLocationRequestsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        requests = LocationRequest.objects.filter(
+            receiver=request.user,
+            status="pending",
+        ).select_related("sender")
+
+        data = []
+        for req in requests:
+            data.append({
+                "id": req.id,
+                "sender_id": req.sender.id,
+                "sender_username": req.sender.username,
+                "sender_profile_picture": req.sender.profile_picture.url if req.sender.profile_picture else None,
+                "created_at": req.created_at.isoformat(),
+                "expires_at": req.expires_at.isoformat(),
+            })
+
+        return Response(data)

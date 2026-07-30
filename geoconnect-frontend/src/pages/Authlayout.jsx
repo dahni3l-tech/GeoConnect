@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import "./styles/AuthLayout.css"; 
+import "./styles/Authlayout.css"; 
 import bgVideo from "../vid/geo.mp4";
 
 function AuthLayout({ children, title, subtitle, linkText, linkTo, linkLabel }) {
