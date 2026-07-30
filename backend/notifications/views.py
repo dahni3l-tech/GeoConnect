@@ -1,3 +1,4 @@
+import logging
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -11,11 +12,16 @@ from django.contrib.auth import get_user_model
 import json
 import pywebpush
 
+logger = logging.getLogger(__name__)
+
 User = get_user_model()
 
 VAPID_PRIVATE_KEY = getattr(settings, "VAPID_PRIVATE_KEY", "")
 VAPID_PUBLIC_KEY = getattr(settings, "VAPID_PUBLIC_KEY", "")
 VAPID_CLAIMS = {"sub": "mailto:noreply@geoconnect.com"}
+
+if not VAPID_PRIVATE_KEY:
+    logger.warning("VAPID_PRIVATE_KEY is not configured in settings")
 
 
 def send_push_notification(subscription, title, body, data=None):
@@ -23,6 +29,13 @@ def send_push_notification(subscription, title, body, data=None):
         return False
 
     try:
+        logger.info(
+            "Sending push notification to %s | title=%s | body=%s | data=%s",
+            subscription.endpoint,
+            title,
+            body,
+            data,
+        )
         pywebpush.webpush(
             subscription_info={
                 "endpoint": subscription.endpoint,
@@ -35,13 +48,38 @@ def send_push_notification(subscription, title, body, data=None):
             vapid_private_key=VAPID_PRIVATE_KEY,
             vapid_claims=VAPID_CLAIMS,
         )
+        logger.info("Push notification sent successfully to %s", subscription.endpoint)
         return True
+    except pywebpush.WebPushException as exc:
+        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+        logger.error(
+            "Push failed for %s | status=%s | endpoint=%s",
+            subscription.endpoint,
+            status_code,
+            subscription.endpoint,
+        )
+        if status_code in (400, 401, 403, 404, 410):
+            try:
+                subscription.delete()
+                logger.info(
+                    "Deleted stale subscription for user=%s endpoint=%s",
+                    subscription.user.username,
+                    subscription.endpoint,
+                )
+            except Exception:
+                logger.exception("Failed to delete stale subscription")
+        return False
     except Exception:
+        logger.exception("Failed to send push notification to %s", subscription.endpoint)
         return False
 
 
 class PushSubscriptionView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        has_subscription = PushSubscription.objects.filter(user=request.user).exists()
+        return Response({"subscribed": has_subscription})
 
     def post(self, request):
         endpoint = request.data.get("endpoint")
@@ -96,9 +134,15 @@ class RequestLocationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        logger.info(
+            "RequestLocationView called by user=%s with data=%s",
+            request.user.username,
+            request.data,
+        )
         receiver_id = request.data.get("receiver_id")
 
         if not receiver_id:
+            logger.warning("RequestLocationView: missing receiver_id")
             return Response(
                 {"detail": "receiver_id is required"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -107,12 +151,14 @@ class RequestLocationView(APIView):
         try:
             receiver = User.objects.get(id=receiver_id)
         except User.DoesNotExist:
+            logger.warning("RequestLocationView: receiver not found id=%s", receiver_id)
             return Response(
                 {"detail": "Receiver not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         if receiver == request.user:
+            logger.warning("RequestLocationView: self-request blocked")
             return Response(
                 {"detail": "Cannot request location from yourself"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -125,6 +171,11 @@ class RequestLocationView(APIView):
         ).exists()
 
         if not are_friends:
+            logger.warning(
+                "RequestLocationView: not friends requester=%s receiver=%s",
+                request.user.username,
+                receiver.username,
+            )
             return Response(
                 {"detail": "You can only request location from friends"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -134,8 +185,19 @@ class RequestLocationView(APIView):
             sender=request.user,
             receiver=receiver,
         )
+        logger.info(
+            "RequestLocationView: created location_request id=%s sender=%s receiver=%s",
+            location_request.id,
+            request.user.username,
+            receiver.username,
+        )
 
         subscriptions = PushSubscription.objects.filter(user=receiver)
+        logger.info(
+            "RequestLocationView: found %d push subscriptions for receiver=%s",
+            subscriptions.count(),
+            receiver.username,
+        )
 
         for subscription in subscriptions:
             send_push_notification(

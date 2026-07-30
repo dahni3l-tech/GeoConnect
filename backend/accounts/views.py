@@ -413,8 +413,8 @@ class OnlineStatusView(APIView):
 
     def _notify_friends_online(self, user):
         friend_ids = FriendRequest.objects.filter(
-            models.Q(sender=user, status="accepted") |
-            models.Q(receiver=user, status="accepted")
+            Q(sender=user, status="accepted") |
+            Q(receiver=user, status="accepted")
         ).values_list("sender_id", "receiver_id")
 
         friends = set()
