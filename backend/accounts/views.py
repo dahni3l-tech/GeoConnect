@@ -22,7 +22,7 @@ from django.utils.encoding import force_str
 from django.db.models import Q
 from .models import User, FriendRequest
 from notifications.models import LocationRequest, Notification, PushSubscription
-from notifications.views import send_push_notification
+from notifications.views import broadcast_push_notifications
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -442,17 +442,16 @@ class OnlineStatusView(APIView):
             )
 
             subscriptions = PushSubscription.objects.filter(user=friend)
-            for subscription in subscriptions:
-                send_push_notification(
-                    subscription=subscription,
-                    title="Friend Online",
-                    body=f"{user.username} is now online.",
-                    data={
-                        "type": "friend_online",
-                        "userId": user.id,
-                        "username": user.username,
-                    },
-                )
+            broadcast_push_notifications(
+                subscriptions,
+                title="Friend Online",
+                body=f"{user.username} is now online.",
+                data={
+                    "type": "friend_online",
+                    "userId": user.id,
+                    "username": user.username,
+                },
+            )
 
 
 class PendingLocationRequestsView(APIView):

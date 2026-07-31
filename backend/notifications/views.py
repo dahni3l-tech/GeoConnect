@@ -10,6 +10,7 @@ from accounts.models import FriendRequest, User, User
 from django.conf import settings
 from django.contrib.auth import get_user_model
 import json
+import time
 import pywebpush
 
 logger = logging.getLogger(__name__)
@@ -23,55 +24,151 @@ VAPID_CLAIMS = {"sub": "mailto:noreply@geoconnect.com"}
 if not VAPID_PRIVATE_KEY:
     logger.warning("VAPID_PRIVATE_KEY is not configured in settings")
 
+# HTTP statuses that are permanent: the subscription/endpoint/VAPID is invalid.
+# These are pruned immediately and are NOT retried.
+PERMANENT_STATUS_CODES = frozenset({400, 401, 403, 404, 410})
 
-def send_push_notification(subscription, title, body, data=None):
+# HTTP statuses that are transient (rate-limit, gateway, timeout): retry them
+# with a short backoff before giving up.
+TRANSIENT_STATUS_CODES = frozenset({408, 419, 425, 429, 500, 502, 503, 504})
+
+PUSH_MAX_ATTEMPTS = getattr(settings, "PUSH_NOTIFICATION_MAX_ATTEMPTS", 3)
+PUSH_RETRY_BACKOFF = getattr(settings, "PUSH_NOTIFICATION_RETRY_BACKOFF", 0.25)
+
+
+def _delete_stale_subscription(subscription):
+    """Remove a subscription the push service rejects as invalid/gone."""
+    try:
+        subscription.delete()
+        logger.info(
+            "Deleted stale subscription for user=%s endpoint=%s",
+            subscription.user.username,
+            subscription.endpoint,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to delete stale subscription for endpoint=%s",
+            subscription.endpoint,
+        )
+
+
+def send_push_notification(
+    subscription, title, body, data=None, max_attempts=PUSH_MAX_ATTEMPTS
+):
     if not subscription:
         return False
 
-    try:
-        logger.info(
-            "Sending push notification to %s | title=%s | body=%s | data=%s",
-            subscription.endpoint,
-            title,
-            body,
-            data,
-        )
-        pywebpush.webpush(
-            subscription_info={
-                "endpoint": subscription.endpoint,
-                "keys": {
-                    "p256dh": subscription.p256dh,
-                    "auth": subscription.auth,
+    payload = json.dumps({"title": title, "body": body, "data": data or {}})
+
+    logger.info(
+        "Sending push notification to %s | title=%s | body=%s | data=%s",
+        subscription.endpoint,
+        title,
+        body,
+        data,
+    )
+
+    last_status = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            pywebpush.webpush(
+                subscription_info={
+                    "endpoint": subscription.endpoint,
+                    "keys": {
+                        "p256dh": subscription.p256dh,
+                        "auth": subscription.auth,
+                    },
                 },
-            },
-            data=json.dumps({"title": title, "body": body, "data": data or {}}),
-            vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims=VAPID_CLAIMS,
+                data=payload,
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims=VAPID_CLAIMS,
+            )
+            logger.info(
+                "Push notification sent successfully to %s (attempt %d/%d)",
+                subscription.endpoint,
+                attempt,
+                max_attempts,
+            )
+            return True
+
+        except pywebpush.WebPushException as exc:
+            response = getattr(exc, "response", None)
+            status_code = getattr(response, "status_code", None)
+            last_status = status_code
+            logger.error(
+                "Push failed (attempt %d/%d) for %s | status=%s",
+                attempt,
+                max_attempts,
+                subscription.endpoint,
+                status_code,
+            )
+
+            # Invalid / revoked / unauthorized -> prune, do not retry.
+            if status_code in PERMANENT_STATUS_CODES:
+                _delete_stale_subscription(subscription)
+                return False
+
+            # Transient (rate-limit / gateway / timeout) -> retry with backoff.
+            if status_code in TRANSIENT_STATUS_CODES and attempt < max_attempts:
+                time.sleep(PUSH_RETRY_BACKOFF * (2 ** (attempt - 1)))
+                continue
+
+            return False
+
+        except Exception:
+            logger.exception(
+                "Push delivery error (attempt %d/%d) for %s",
+                attempt,
+                max_attempts,
+                subscription.endpoint,
+            )
+            if attempt < max_attempts:
+                time.sleep(PUSH_RETRY_BACKOFF * (2 ** (attempt - 1)))
+                continue
+            return False
+
+    logger.warning(
+        "Exhausted retries for %s | last_status=%s",
+        subscription.endpoint,
+        last_status,
+    )
+    return False
+
+
+def broadcast_push_notifications(subscriptions, title, body, data=None):
+    """
+    Fan a single push notification out to many PushSubscription recipients.
+
+    Accepts any iterable of ``PushSubscription`` instances (a queryset, list,
+    or empty container) and delivers to every device in it. Each subscription
+    is delivered independently, so a failure for one device never aborts the
+    rest of the broadcast. Stale endpoints are cleaned up automatically by
+    ``send_push_notification``.
+
+    Returns a summary dict: {"sent": int, "failed": int, "total": int}.
+    """
+    subscription_list = list(subscriptions)
+    total = len(subscription_list)
+
+    if total == 0:
+        logger.info(
+            "broadcast_push_notifications: nothing to send (title=%s)", title
         )
-        logger.info("Push notification sent successfully to %s", subscription.endpoint)
-        return True
-    except pywebpush.WebPushException as exc:
-        status_code = getattr(getattr(exc, "response", None), "status_code", None)
-        logger.error(
-            "Push failed for %s | status=%s | endpoint=%s",
-            subscription.endpoint,
-            status_code,
-            subscription.endpoint,
-        )
-        if status_code in (400, 401, 403, 404, 410):
-            try:
-                subscription.delete()
-                logger.info(
-                    "Deleted stale subscription for user=%s endpoint=%s",
-                    subscription.user.username,
-                    subscription.endpoint,
-                )
-            except Exception:
-                logger.exception("Failed to delete stale subscription")
-        return False
-    except Exception:
-        logger.exception("Failed to send push notification to %s", subscription.endpoint)
-        return False
+        return {"sent": 0, "failed": 0, "total": 0}
+
+    sent = 0
+    failed = 0
+    for subscription in subscription_list:
+        if send_push_notification(subscription, title, body, data):
+            sent += 1
+        else:
+            failed += 1
+
+    logger.info(
+        "broadcast_push_notifications: title=%s total=%d sent=%d failed=%d",
+        title, total, sent, failed,
+    )
+    return {"sent": sent, "failed": failed, "total": total}
 
 
 class PushSubscriptionView(APIView):
@@ -127,6 +224,61 @@ class PushSubscriptionView(APIView):
         return Response(
             {"detail": "subscription not found"},
             status=status.HTTP_404_NOT_FOUND,
+        )
+
+
+class BroadcastNotificationView(APIView):
+    """
+    Broadcast a push notification to many subscriptions at once.
+
+    POST /api/notifications/broadcast/
+    {
+        "title": "Hello",
+        "body": "Optional body text",
+        "data": {"type": "announcement", ...},   # optional payload merged into the push
+        "subscriptions": [1, 2, 3]               # optional list of PushSubscription ids
+    }
+
+    When ``subscriptions`` is omitted the notification is fanned out to every
+    registered subscription (system-wide broadcast). Guarded by
+    ``IsAuthenticated``; tighten to staff-only in production if exposed.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        title = request.data.get("title")
+        body = request.data.get("body", "")
+        data = request.data.get("data") or {}
+
+        if not title:
+            return Response(
+                {"detail": "title is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        subscription_ids = request.data.get("subscriptions")
+        if subscription_ids is not None:
+            try:
+                subscription_ids = [int(sid) for sid in subscription_ids]
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "subscriptions must be a list of ids"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            subscriptions = PushSubscription.objects.filter(id__in=subscription_ids)
+        else:
+            subscriptions = PushSubscription.objects.all()
+
+        result = broadcast_push_notifications(subscriptions, title, body, data)
+
+        return Response(
+            {
+                "detail": "Broadcast complete",
+                "sent": result["sent"],
+                "failed": result["failed"],
+                "total": result["total"],
+            },
+            status=status.HTTP_200_OK,
         )
 
 
@@ -199,24 +351,25 @@ class RequestLocationView(APIView):
             receiver.username,
         )
 
-        for subscription in subscriptions:
-            send_push_notification(
-                subscription=subscription,
-                title="Location Request",
-                body=f"{request.user.username} is requesting your live location.",
-                data={
-                    "type": "location_request",
-                    "requestId": location_request.id,
-                    "senderId": request.user.id,
-                    "senderUsername": request.user.username,
-                },
-            )
+        broadcast_result = broadcast_push_notifications(
+            subscriptions,
+            title="Location Request",
+            body=f"{request.user.username} is requesting your live location.",
+            data={
+                "type": "location_request",
+                "requestId": location_request.id,
+                "senderId": request.user.id,
+                "senderUsername": request.user.username,
+            },
+        )
 
         return Response(
             {
                 "detail": "Location request sent",
                 "request_id": location_request.id,
-                "notifications_sent": subscriptions.count(),
+                "notifications_sent": broadcast_result["sent"],
+                "notifications_failed": broadcast_result["failed"],
+                "notifications_total": broadcast_result["total"],
             },
             status=status.HTTP_201_CREATED,
         )
@@ -253,18 +406,17 @@ class RespondLocationRequestView(APIView):
             sender = location_request.sender
             subscriptions = PushSubscription.objects.filter(user=sender)
 
-            for subscription in subscriptions:
-                send_push_notification(
-                    subscription=subscription,
-                    title="Location Updated",
-                    body=f"{request.user.username} has shared their live location with you.",
-                    data={
-                        "type": "location_accepted",
-                        "requestId": location_request.id,
-                        "senderId": request.user.id,
-                        "senderUsername": request.user.username,
-                    },
-                )
+            broadcast_push_notifications(
+                subscriptions,
+                title="Location Updated",
+                body=f"{request.user.username} has shared their live location with you.",
+                data={
+                    "type": "location_accepted",
+                    "requestId": location_request.id,
+                    "senderId": request.user.id,
+                    "senderUsername": request.user.username,
+                },
+            )
 
         return Response(
             {

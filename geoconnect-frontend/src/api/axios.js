@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: BASE_URL,
 });
 
 // Attach access token to every request
@@ -38,28 +40,23 @@ api.interceptors.response.use(
       }
 
       try {
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL}token/refresh/`,
-          {
-            refresh,
-          }
-        );
+        const response = await axios.post(`${BASE_URL}token/refresh/`, {
+          refresh,
+        });
 
         const newAccess = response.data.access;
-
         localStorage.setItem("access", newAccess);
 
-        originalRequest.headers.Authorization =
-          `Bearer ${newAccess}`;
+        if (response.data.refresh) {
+          localStorage.setItem("refresh", response.data.refresh);
+        }
+
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
 
         return api(originalRequest);
-
       } catch (refreshError) {
-
         localStorage.clear();
-
         window.location.href = "/login";
-
         return Promise.reject(refreshError);
       }
     }
