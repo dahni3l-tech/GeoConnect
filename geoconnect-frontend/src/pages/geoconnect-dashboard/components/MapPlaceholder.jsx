@@ -35,18 +35,10 @@ const createAvatarIcon = (image, username) => {
 };
 
 function MapPlaceholder({ user, friends, className }) {
-  friends.forEach(friend => {
-  console.log(friend);
-});
-
   if (!user) return null;
 
   const latitude = user.latitude ?? 6.5244;
   const longitude = user.longitude ?? 3.3792;
-
-  console.log("Latitude:", latitude);
-console.log("Longitude:", longitude);
-console.log("User:", user);
 
   return (
     <motion.div
@@ -66,43 +58,46 @@ console.log("User:", user);
         }}
       >
         <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-              <Marker
-        position={[latitude, longitude]}
-        icon={createAvatarIcon(
-          user.profile_picture,
-          user.username
-        )}
-      >
-        <Popup>
-          <strong>{user.username}</strong>
-          <br />
-          Your current location
-        </Popup>
-      </Marker>
-
-              {friends.map((friend) => (
-                <Marker
-          key={friend.id}
-          position={[
-            friend.latitude,
-            friend.longitude,
-          ]}
+        <Marker
+          position={[latitude, longitude]}
           icon={createAvatarIcon(
-            friend.profile_picture,
-            friend.username
+            user.profile_picture,
+            user.username
           )}
         >
           <Popup>
-            <strong>{friend.username}</strong>
+            <strong>{user.username}</strong>
             <br />
-            Friend's Location
+            Your current location
           </Popup>
         </Marker>
-      ))}
+
+        {friends
+          .filter(
+            (friend) =>
+              typeof friend.latitude === "number" &&
+              typeof friend.longitude === "number"
+          )
+          .map((friend) => (
+            <Marker
+              key={friend.id}
+              position={[friend.latitude, friend.longitude]}
+              icon={createAvatarIcon(
+                friend.profile_picture,
+                friend.username
+              )}
+            >
+              <Popup>
+                <strong>{friend.username}</strong>
+                <br />
+                Friend's Location
+              </Popup>
+            </Marker>
+          ))}
       </MapContainer>
     </motion.div>
   );

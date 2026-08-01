@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiMapPinLine, RiNotification3Line } from 'react-icons/ri';
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Navigate } from "react-router-dom";
 import './Dashboard.css';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
@@ -279,6 +279,10 @@ function Dashboard() {
       setNotificationLoading(false);
     }
   };
+
+  if (!localStorage.getItem("access")) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="dashboard-container">
