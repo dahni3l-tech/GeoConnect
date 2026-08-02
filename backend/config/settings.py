@@ -37,6 +37,10 @@ ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS",
     "127.0.0.1,localhost,geoconnect-afte.onrender.com",
 ).split(",")
+print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+
+
+print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
 
 from datetime import timedelta
 # Application definition
