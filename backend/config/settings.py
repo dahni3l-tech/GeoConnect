@@ -81,6 +81,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+if os.getenv("ENABLE_REQUEST_PROFILING"):
+    MIDDLEWARE = ["config.profiling.RequestTimingMiddleware"] + MIDDLEWARE
+
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
@@ -118,6 +121,7 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
         "PORT": os.getenv("DB_PORT"),
+        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
     }
 }
 

@@ -24,6 +24,7 @@ function Login() {
 
             localStorage.setItem("access", data.tokens.access);
             localStorage.setItem("refresh", data.tokens.refresh);
+            localStorage.setItem("geoconnect_user", JSON.stringify(data.user));
 
             alert("Login successful!");
             navigate("/dashboard");

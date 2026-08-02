@@ -10,7 +10,7 @@ import StatsCards from './components/StatsCards';
 import QuickActions from './components/QuickActions';
 import LocationCard from './components/LocationCard';
 import MapPlaceholder from './components/MapPlaceholder';
-import { getProfile } from "../../services/profileService";
+import { getProfile, getUserCache, setUserCache } from "../../services/profileService";
 import {
   getFriends,
   getFriendRequests,
@@ -19,11 +19,9 @@ import { updateLocation } from "../../services/locationService";
 import {
   respondToLocationRequest,
   subscribeUser,
-  getSubscriptionStatus,
   checkBackendSubscription,
   updateOnlineStatus,
   getPendingLocationRequests,
-  getNotifications,
 } from "../../services/pushNotificationService";
 
 const ONLINE_HEARTBEAT_INTERVAL = 30000;
@@ -34,8 +32,7 @@ function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchParams] = useSearchParams();
 
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => getUserCache());
   const [friends, setFriends] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -46,6 +43,7 @@ function Dashboard() {
   const locationIntervalRef = useRef(null);
   const heartbeatRef = useRef(null);
   const pendingRequestsRef = useRef(null);
+  const initializedRef = useRef(false);
 
   const startLocationSharing = useCallback(() => {
     if (locationIntervalRef.current) return;
@@ -70,8 +68,11 @@ function Dashboard() {
             await updateLocation(newLat, newLng);
             lastLocation.current = { lat: newLat, lng: newLng };
 
-            const profile = await getProfile();
-            setUser(profile);
+            setUser((prev) => ({
+              ...prev,
+              latitude: newLat,
+              longitude: newLng,
+            }));
           } catch (error) {
             console.error("Failed to update location:", error);
           }
@@ -144,29 +145,37 @@ function Dashboard() {
   }, [searchParams, startLocationSharing]);
 
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     const fetchDashboardData = async () => {
       try {
-        const [profile, friendsData, requestsData] = await Promise.all([
-          getProfile(),
-          getFriends(),
-          getFriendRequests(),
+        const profile = await getProfile();
+        setUser(profile);
+        setUserCache(profile);
+
+        const [friendsData, pendingData] = await Promise.all([
+          getFriends().catch(() => []),
+          getFriendRequests().catch(() => []),
         ]);
 
-        setUser(profile);
         setFriends(friendsData);
-        setPendingRequests(requestsData);
+        setPendingRequests(pendingData);
 
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
               try {
-                await updateLocation(
-                  position.coords.latitude,
-                  position.coords.longitude
-                );
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
 
-                const updatedProfile = await getProfile();
-                setUser(updatedProfile);
+                await updateLocation(lat, lng);
+
+                setUser((prev) => ({
+                  ...prev,
+                  latitude: lat,
+                  longitude: lng,
+                }));
               } catch (err) {
                 console.error("Failed to update location:", err);
               }
@@ -178,8 +187,6 @@ function Dashboard() {
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -202,10 +209,7 @@ function Dashboard() {
 
     pendingRequestsRef.current = setInterval(async () => {
       try {
-        const [pending, notifData] = await Promise.all([
-          getPendingLocationRequests(),
-          getNotifications().catch(() => ({ results: [], unread_count: 0 })),
-        ]);
+        const pending = await getPendingLocationRequests();
         setPendingRequests(pending);
       } catch (err) {
         console.error("Failed to fetch pending requests:", err);
@@ -223,36 +227,27 @@ function Dashboard() {
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
-  useEffect(() => {
-    let mounted = true;
-    let intervalId;
+  const checkSubscription = useCallback(async () => {
+    try {
+      const backendSubscribed = await checkBackendSubscription();
+      console.log("[Dashboard] Backend subscription:", backendSubscribed);
 
-    async function checkSubscription() {
-      try {
-        const backendSubscribed = await checkBackendSubscription();
-        console.log("[Dashboard] Backend subscription:", backendSubscribed);
-        
-        if (mounted) {
-          setNotificationsEnabled(backendSubscribed);
-          setCheckingSubscription(false);
-        }
-      } catch (err) {
-        console.error("[Dashboard] Failed to check backend subscription:", err);
-        if (mounted) {
-          setNotificationsEnabled(false);
-          setCheckingSubscription(false);
-        }
-      }
+      setNotificationsEnabled(backendSubscribed);
+      setCheckingSubscription(false);
+    } catch (err) {
+      console.error("[Dashboard] Failed to check backend subscription:", err);
+      setNotificationsEnabled(false);
+      setCheckingSubscription(false);
     }
-
-    checkSubscription();
-    intervalId = setInterval(checkSubscription, 5000);
-
-    return () => {
-      mounted = false;
-      if (intervalId) clearInterval(intervalId);
-    };
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      await checkSubscription();
+    })();
+    const intervalId = setInterval(checkSubscription, 30000);
+    return () => clearInterval(intervalId);
+  }, [checkSubscription]);
 
   useEffect(() => {
     if (!checkingSubscription && !notificationsEnabled) {
@@ -280,8 +275,17 @@ function Dashboard() {
     }
   };
 
+
   if (!localStorage.getItem("access")) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!user) {
+    return (
+      <div className="dashboard-loading">
+        Loading...
+      </div>
+    );
   }
 
   return (

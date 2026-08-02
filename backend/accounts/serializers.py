@@ -1,7 +1,6 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import User, FriendRequest
-from cloudinary.utils import cloudinary_url 
+from .models import User, FriendRequest 
 
 
 
@@ -77,10 +76,9 @@ class ProfileSerializer(serializers.ModelSerializer):
         ]
 
     def get_profile_picture(self, obj):
-        if obj.profile_picture:
-            url, options = cloudinary_url(obj.profile_picture.public_id)
-            return url
-        return None     
+        if not obj.profile_picture:
+            return None
+        return obj.profile_picture.url     
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:

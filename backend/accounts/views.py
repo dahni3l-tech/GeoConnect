@@ -84,7 +84,10 @@ class ProfileView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
-        serializer = ProfileSerializer(request.user)
+        user = request.user.only(
+            "id", "username", "email", "bio", "latitude", "longitude", "is_online"
+        )
+        serializer = ProfileSerializer(user)
         return Response(serializer.data)
 
     def patch(self, request):
@@ -335,7 +338,7 @@ class FriendsListView(APIView):
             status="accepted",
         ).filter(
             Q(sender=request.user) | Q(receiver=request.user)
-        )
+        ).select_related("sender", "receiver")
 
         friends = {}
 

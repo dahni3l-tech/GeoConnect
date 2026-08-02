@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'; 
-import { getProfile } from "../../../services/profileService";
+import { updateLocation } from "../../../services/locationService";
 import {
   RiMapPinLine,
   RiWifiLine,
@@ -27,8 +27,11 @@ function LocationCard({ user, setUser, sharingLocation, onStartSharing, onStopSh
             position.coords.longitude
           );
 
-          const updatedProfile = await getProfile();
-          setUser(updatedProfile);
+          setUser((prev) => ({
+            ...prev,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }));
         } catch (error) {
           console.error(error);
         }
@@ -66,7 +69,7 @@ function LocationCard({ user, setUser, sharingLocation, onStartSharing, onStopSh
           </div>
           <div className="loc-detail-content">
             <span className="loc-detail-label">Latitude</span>
-            <span className="loc-detail-value">{user.latitude !== null
+            <span className="loc-detail-value">{typeof user.latitude === "number"
     ? user.latitude.toFixed(6)
     : "Not Available"}</span>
           </div>
@@ -78,7 +81,7 @@ function LocationCard({ user, setUser, sharingLocation, onStartSharing, onStopSh
           </div>
           <div className="loc-detail-content">
             <span className="loc-detail-label">Longitude</span>
-            <span className="loc-detail-value">{user.longitude !== null
+            <span className="loc-detail-value">{typeof user.longitude === "number"
     ? user.longitude.toFixed(6)
     : "Not Available"}</span>
           </div>
