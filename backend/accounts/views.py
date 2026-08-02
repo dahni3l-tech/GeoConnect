@@ -141,7 +141,7 @@ class ForgotPasswordView(APIView):
         token = default_token_generator.make_token(user)
 
         reset_link = (
-            f"http://127.0.0.1:8000/api/reset-password/{uid64}/{token}/"
+            f"https://geoconnect-afte.onrender.com/api/reset-password/{uid64}/{token}/"
         )
 
         send_mail(
