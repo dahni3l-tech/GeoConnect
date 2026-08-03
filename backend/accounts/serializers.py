@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import User, FriendRequest 
+from .models import User, FriendRequest, GuardianProfile, FamilyMember, SafePlace, EmergencyContact 
 
 
 
