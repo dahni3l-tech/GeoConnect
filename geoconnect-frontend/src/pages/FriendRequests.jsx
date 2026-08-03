@@ -4,6 +4,7 @@ import {
   acceptFriendRequest,
   rejectFriendRequest,
 } from "../services/friendService";
+import "./styles/AppTheme.css";
 
 function FriendRequests() {
   const [requests, setRequests] = useState([]);
@@ -33,33 +34,40 @@ function FriendRequests() {
 
   return (
     <div className="friends-page">
-      <h1>Friend Requests</h1>
+      <div className="friends-header">
+        <h1>Friend Requests</h1>
+        <p className="friends-subtitle">Review and manage your pending connections.</p>
+      </div>
 
       {requests.length === 0 ? (
-        <p>No pending requests.</p>
+        <div className="empty-friends"><p>No pending requests.</p></div>
       ) : (
-        requests.map((request) => (
-          <div
-            key={request.id}
-            className="friend-card"
-          >
-            <h3>{request.sender_username}</h3>
-
-            <p>{request.sender_email}</p>
-
-            <button
-              onClick={() => accept(request.id)}
+        <div className="friends-grid">
+          {requests.map((request) => (
+            <div
+              key={request.id}
+              className="friend-card"
             >
-              Accept
-            </button>
+              <h3>{request.sender_username}</h3>
 
-            <button
-              onClick={() => reject(request.id)}
-            >
-              Reject
-            </button>
-          </div>
-        ))
+              <p>{request.sender_email}</p>
+
+              <div className="friend-actions">
+                <button
+                  onClick={() => accept(request.id)}
+                >
+                  Accept
+                </button>
+
+                <button
+                  onClick={() => reject(request.id)}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
