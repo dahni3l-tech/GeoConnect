@@ -172,7 +172,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:4173",
-    "https://geoconnect-afte.onrender.com",
+    "https://geo-connect-beige.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
