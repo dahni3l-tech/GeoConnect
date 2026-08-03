@@ -151,7 +151,7 @@ function Register() {
                             className={`guardian-toggle ${isGuardian ? "active" : ""}`}
                             onClick={() => setIsGuardian(!isGuardian)}
                         >
-                            {isGuardian ? "Yes" : "No"}
+                            {isGuardian ? "No" : "Yes"}
                         </button>
                     </label>
                 </div>
