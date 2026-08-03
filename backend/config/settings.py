@@ -107,15 +107,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASE_ENGINE = (
-    "django.db.backends.postgresql"
-    if os.getenv("ENVIRONMENT") == "production"
-    else "django.db.backends.mysql"
-)
-
 DATABASES = {
     "default": {
-        "ENGINE": DATABASE_ENGINE,
+        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
         "NAME": os.getenv("DB_NAME"),
         "USER": os.getenv("DB_USER"),
         "PASSWORD": os.getenv("DB_PASSWORD"),
