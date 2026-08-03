@@ -84,9 +84,7 @@ class ProfileView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
-        user = request.user.only(
-            "id", "username", "email", "bio", "latitude", "longitude", "is_online"
-        )
+        user = request.user
         serializer = ProfileSerializer(user)
         return Response(serializer.data)
 
