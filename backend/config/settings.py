@@ -172,7 +172,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:4173",
-    "https://geo-connect-beige.vercel.app",
+    "https://geo-connect-kkzxmozg8-folahan-daniels-projects.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
