@@ -34,7 +34,10 @@ from .serializers import (
     FriendRequestListSerializer,
     FriendSerializer,
     UpdateLocationSerializer,
-    
+    GuardianProfileSerializer,
+    FamilyMemberSerializer,
+    SafePlaceSerializer,
+    EmergencyContactSerializer,
 )
 from rest_framework.parsers import MultiPartParser, FormParser
 
@@ -476,3 +479,144 @@ class PendingLocationRequestsView(APIView):
             })
 
         return Response(data)
+
+
+class GuardianDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        profile = getattr(user, "guardian_profile", None)
+
+        data = {
+            "is_guardian": user.is_guardian,
+            "profile": GuardianProfileSerializer(profile).data if profile else None,
+            "family_members": FamilyMemberSerializer(profile.family_members.all(), many=True).data if profile else [],
+            "safe_places": SafePlaceSerializer(profile.safe_places.all(), many=True).data if profile else [],
+            "emergency_contacts": EmergencyContactSerializer(profile.emergency_contacts.all(), many=True).data if profile else [],
+        }
+
+        return Response(data)
+
+
+class GuardianProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        profile = getattr(request.user, "guardian_profile", None)
+
+        if not profile:
+            return Response(
+                {"error": "Guardian profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = GuardianProfileSerializer(profile, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FamilyMemberListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile = getattr(request.user, "guardian_profile", None)
+
+        if not profile:
+            return Response(
+                {"error": "Guardian profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        members = profile.family_members.all()
+        serializer = FamilyMemberSerializer(members, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        profile = getattr(request.user, "guardian_profile", None)
+
+        if not profile:
+            return Response(
+                {"error": "Guardian profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = FamilyMemberSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save(guardian_profile=profile)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SafePlaceListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile = getattr(request.user, "guardian_profile", None)
+
+        if not profile:
+            return Response(
+                {"error": "Guardian profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        places = profile.safe_places.all()
+        serializer = SafePlaceSerializer(places, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        profile = getattr(request.user, "guardian_profile", None)
+
+        if not profile:
+            return Response(
+                {"error": "Guardian profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = SafePlaceSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save(guardian_profile=profile)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EmergencyContactListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile = getattr(request.user, "guardian_profile", None)
+
+        if not profile:
+            return Response(
+                {"error": "Guardian profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        contacts = profile.emergency_contacts.all()
+        serializer = EmergencyContactSerializer(contacts, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        profile = getattr(request.user, "guardian_profile", None)
+
+        if not profile:
+            return Response(
+                {"error": "Guardian profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = EmergencyContactSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save(guardian_profile=profile)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

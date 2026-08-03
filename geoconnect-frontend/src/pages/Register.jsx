@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api/axios";
+import { register } from "../services/authService";
 import AuthLayout from "./AuthLayout";
 import "./styles/AuthLayout.css";
 import "./styles/Register.css";
@@ -16,8 +16,21 @@ function Register() {
         confirmPassword: "",
     });
 
+    const [isGuardian, setIsGuardian] = useState(false);
+    const [guardianDetails, setGuardianDetails] = useState({
+        guardianName: "",
+        guardianPhone: "",
+        guardianEmail: "",
+        guardianRelation: "",
+        address: "",
+    });
+
     const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value });
+    };
+
+    const handleGuardianChange = (e) => {
+        setGuardianDetails({ ...guardianDetails, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = async (e) => {
@@ -38,17 +51,44 @@ function Register() {
         return;
     }
 
+    if (isGuardian && (
+        !guardianDetails.guardianName ||
+        !guardianDetails.guardianPhone ||
+        !guardianDetails.guardianRelation
+    )) {
+        alert("Please fill in all required guardian details.");
+        return;
+    }
+
         setIsLoading(true);
 
         try {
-            const response = await api.post("register/", {
-                username: form.username,
-                email: form.email,
-                password: form.password,
-            });
+            const guardianPayload = isGuardian ? {
+                guardian_name: guardianDetails.guardianName,
+                guardian_phone: guardianDetails.guardianPhone,
+                guardian_email: guardianDetails.guardianEmail,
+                guardian_relation: guardianDetails.guardianRelation,
+                address: guardianDetails.address,
+            } : {};
+
+            const response = await register(
+                form.username,
+                form.email,
+                form.password,
+                isGuardian,
+                guardianPayload
+            );
             alert("Registration successful! You can now log in.");
             navigate("/login");
             setForm({ username: "", email: "", password: "", confirmPassword: "" });
+            setIsGuardian(false);
+            setGuardianDetails({
+                guardianName: "",
+                guardianPhone: "",
+                guardianEmail: "",
+                guardianRelation: "",
+                address: "",
+            });
             console.log(response.data);
         } catch (error) {
             if (error.response) {
@@ -102,6 +142,63 @@ function Register() {
                     value={form.confirmPassword}
                     onChange={handleChange}
                 />
+
+                <div className="guardian-mode-question">
+                    <label className="guardian-toggle-label">
+                        <span>Are you a guardian?</span>
+                        <button
+                            type="button"
+                            className={`guardian-toggle ${isGuardian ? "active" : ""}`}
+                            onClick={() => setIsGuardian(!isGuardian)}
+                        >
+                            {isGuardian ? "Yes" : "No"}
+                        </button>
+                    </label>
+                </div>
+
+                {isGuardian && (
+                    <div className="guardian-details-form">
+                        <h3>Guardian Details</h3>
+                        <input
+                            type="text"
+                            name="guardianName"
+                            placeholder="Guardian Full Name"
+                            value={guardianDetails.guardianName}
+                            onChange={handleGuardianChange}
+                            required
+                        />
+                        <input
+                            type="tel"
+                            name="guardianPhone"
+                            placeholder="Guardian Phone Number"
+                            value={guardianDetails.guardianPhone}
+                            onChange={handleGuardianChange}
+                            required
+                        />
+                        <input
+                            type="email"
+                            name="guardianEmail"
+                            placeholder="Guardian Email (optional)"
+                            value={guardianDetails.guardianEmail}
+                            onChange={handleGuardianChange}
+                        />
+                        <input
+                            type="text"
+                            name="guardianRelation"
+                            placeholder="Relation (e.g. Parent, Spouse)"
+                            value={guardianDetails.guardianRelation}
+                            onChange={handleGuardianChange}
+                            required
+                        />
+                        <textarea
+                            name="address"
+                            placeholder="Home Address"
+                            value={guardianDetails.address}
+                            onChange={handleGuardianChange}
+                            rows="3"
+                        />
+                    </div>
+                )}
                 
                 <button
                     type="submit"

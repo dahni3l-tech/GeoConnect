@@ -25,7 +25,7 @@ const menuItems = [
   { id: 'settings', label: 'Settings', icon: RiSettings4Line, path: '/settings' },
 ];
 
-function Sidebar({ mobileOpen, toggleMobile}) {
+function Sidebar({ mobileOpen, toggleMobile, user }) {
   
   const navigate = useNavigate();
 
@@ -50,7 +50,7 @@ const handleLogout = () => {
         </div>
 
         <nav className="sidebar-nav">
-          {menuItems.map((item, index) => {
+          {menuItems.filter((item) => item.id !== 'guardian' || (user && user.is_guardian)).map((item, index) => {
             const Icon = item.icon;
             
 

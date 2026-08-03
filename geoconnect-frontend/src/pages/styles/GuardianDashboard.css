@@ -981,3 +981,116 @@
     transition: none;
   }
 }
+
+/* Loading */
+.guardian-loading {
+  text-align: center;
+  padding: 48px;
+  color: #6B7280;
+  font-size: 15px;
+}
+
+/* Guardian Profile Info */
+.guardian-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guardian-profile-info p {
+  margin: 0;
+  font-size: 14px;
+  color: #374151;
+}
+
+.guardian-profile-info strong {
+  color: #1F2937;
+}
+
+/* Add Forms */
+.guardian-add-form {
+  margin-top: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #E5E7EB;
+}
+
+.guardian-add-form h4 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.guardian-add-form input {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1F2937;
+  background: #F9FAFB;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.guardian-add-form input::placeholder {
+  color: #9CA3AF;
+  font-weight: 400;
+}
+
+.guardian-add-form input:focus {
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  background: white;
+}
+
+.guardian-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  background: #2563EB;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.guardian-submit-btn:hover {
+  background: #1D4ED8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* Emergency Contact Phone */
+.emergency-phone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6B7280;
+  font-size: 13px;
+}
+
+.emergency-phone span {
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+@media (max-width: 480px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}

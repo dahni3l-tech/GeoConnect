@@ -6,17 +6,42 @@ from .models import User, FriendRequest
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    is_guardian = serializers.BooleanField(required=False, default=False)
+    guardian_name = serializers.CharField(required=False, allow_blank=True)
+    guardian_phone = serializers.CharField(required=False, allow_blank=True)
+    guardian_email = serializers.CharField(required=False, allow_blank=True)
+    guardian_relation = serializers.CharField(required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ["username", "email", "password"]
+        fields = ["username", "email", "password", "is_guardian", "guardian_name", "guardian_phone", "guardian_email", "guardian_relation", "address"]
 
     def create(self, validated_data):
+        is_guardian = validated_data.pop("is_guardian", False)
+        guardian_name = validated_data.pop("guardian_name", "")
+        guardian_phone = validated_data.pop("guardian_phone", "")
+        guardian_email = validated_data.pop("guardian_email", "")
+        guardian_relation = validated_data.pop("guardian_relation", "")
+        address = validated_data.pop("address", "")
+
         user = User.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
-            password=validated_data["password"]
+            password=validated_data["password"],
+            is_guardian=is_guardian,
         )
+
+        if is_guardian and guardian_name and guardian_phone and guardian_relation:
+            GuardianProfile.objects.create(
+                user=user,
+                guardian_name=guardian_name,
+                guardian_phone=guardian_phone,
+                guardian_email=guardian_email,
+                guardian_relation=guardian_relation,
+                address=address,
+            )
+
         return user
 
 
@@ -73,6 +98,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "longitude",
             "is_online",
             "last_seen",
+            "is_guardian",
         ]
 
     def get_profile_picture(self, obj):
@@ -185,7 +211,32 @@ class FriendSerializer(serializers.ModelSerializer):
 class UpdateLocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = [
-            "latitude",
-            "longitude",
-        ]
+        fields = ["latitude", "longitude"]
+
+
+class GuardianProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GuardianProfile
+        fields = ["id", "guardian_name", "guardian_phone", "guardian_email", "guardian_relation", "address", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class FamilyMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FamilyMember
+        fields = ["id", "name", "relation", "phone", "email", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class SafePlaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SafePlace
+        fields = ["id", "name", "address", "latitude", "longitude", "radius", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class EmergencyContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmergencyContact
+        fields = ["id", "name", "phone", "contact_type", "created_at"]
+        read_only_fields = ["id", "created_at"]

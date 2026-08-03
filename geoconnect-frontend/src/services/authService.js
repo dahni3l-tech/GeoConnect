@@ -11,12 +11,16 @@ export const login = async (login, password) => {
 };
 
 // Register user
-export const register = async (username, email, password) => {
-  const response = await api.post("register/", {
+export const register = async (username, email, password, isGuardian = false, guardianDetails = {}) => {
+  const payload = {
     username,
     email,
     password,
-  });
+    is_guardian: isGuardian,
+    ...guardianDetails,
+  };
+
+  const response = await api.post("register/", payload);
 
   return response.data;
 };

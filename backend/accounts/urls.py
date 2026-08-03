@@ -16,6 +16,11 @@ from .views import (
     UpdateLocationView,
     OnlineStatusView,
     PendingLocationRequestsView,
+    GuardianDashboardView,
+    GuardianProfileView,
+    FamilyMemberListCreateView,
+    SafePlaceListCreateView,
+    EmergencyContactListCreateView,
 )
 from notifications.views import RequestLocationView, RespondLocationRequestView
 
@@ -62,8 +67,33 @@ urlpatterns = [
     name="online_status",
     ),
     path(
-    "location-requests/pending/",
-    PendingLocationRequestsView.as_view(),
-    name="pending_location_requests",
+        "location-requests/pending/",
+        PendingLocationRequestsView.as_view(),
+        name="pending_location_requests",
+    ),
+    path(
+        "guardian/dashboard/",
+        GuardianDashboardView.as_view(),
+        name="guardian_dashboard",
+    ),
+    path(
+        "guardian/profile/",
+        GuardianProfileView.as_view(),
+        name="guardian_profile",
+    ),
+    path(
+        "guardian/family-members/",
+        FamilyMemberListCreateView.as_view(),
+        name="guardian_family_members",
+    ),
+    path(
+        "guardian/safe-places/",
+        SafePlaceListCreateView.as_view(),
+        name="guardian_safe_places",
+    ),
+    path(
+        "guardian/emergency-contacts/",
+        EmergencyContactListCreateView.as_view(),
+        name="guardian_emergency_contacts",
     ),
 ]

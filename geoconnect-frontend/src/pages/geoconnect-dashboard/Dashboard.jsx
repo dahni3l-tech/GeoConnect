@@ -294,6 +294,7 @@ function Dashboard() {
       <Sidebar
         mobileOpen={mobileMenuOpen}
         toggleMobile={toggleMobileMenu}
+        user={user}
       />
 
       <div className={`dashboard-main ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
