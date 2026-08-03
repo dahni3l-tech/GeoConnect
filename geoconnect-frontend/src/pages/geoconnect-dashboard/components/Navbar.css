@@ -435,7 +435,7 @@
   }
 
   .notification-dropdown {
-    width: calc(100vw - 80px);
+    width: calc(100vw - 90px);
     right: -60px;
   }
 

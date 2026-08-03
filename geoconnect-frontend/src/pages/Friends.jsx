@@ -60,6 +60,7 @@ function Friends() {
 
   return (
     <div className="friends-page">
+      <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
       <div className="friends-header">
         <h1>Friends</h1>
         <p className="friends-subtitle">

@@ -69,7 +69,28 @@
   flex: 1;
   margin-left: 260px;
   padding: 32px;
-  max-width: 800px;
+  overflow-y: auto;
+}
+
+.settings-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  color: #2563EB;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+}
+
+.settings-back-btn:hover {
+  background: #F3F4F6;
+  transform: translateX(-3px);
 }
 
 .settings-section {

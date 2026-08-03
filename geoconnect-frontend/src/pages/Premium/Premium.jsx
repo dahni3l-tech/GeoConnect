@@ -1,7 +1,10 @@
 import './PremiumCard.css';
+import { useNavigate } from "react-router-dom";
 
+function Premium() {
+  const navigate = useNavigate();
 
-const features = [
+  const features = [
   {
     title: 'Real-time Messaging',
     desc: 'Instant, reliable messaging with typing indicators and rich media support.',
@@ -129,6 +132,7 @@ const features = [
 function Premium() {
   return (
     <div className="premium-page">
+      <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
       <div className="premium-container">
         <div className="premium-hero">
           <div className="premium-badge">
@@ -205,6 +209,7 @@ function Premium() {
       </div>
     </div>
   );
+}
 };
 
 export default Premium;

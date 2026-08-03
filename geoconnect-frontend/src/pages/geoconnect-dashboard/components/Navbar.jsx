@@ -271,8 +271,6 @@ function Navbar({ user, toggleMobileMenu }) {
           </AnimatePresence>
             </div>
           </div>
-        </div>
-      </div>
     </motion.header>
   );
 }

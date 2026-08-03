@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   RiPaletteLine,
   RiLockLine,
@@ -9,10 +10,12 @@ import {
   RiUserLine,
   RiShieldLine,
   RiSaveLine,
+  RiArrowLeftLine,
 } from "react-icons/ri";
 import "./styles/Settings.css";
 
 function Settings() {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("profile");
   const [settings, setSettings] = useState({
     theme: "dark",
@@ -293,6 +296,10 @@ function Settings() {
       </div>
 
       <div className="settings-main">
+        <button className="settings-back-btn" onClick={() => navigate(-1)}>
+          <RiArrowLeftLine size={18} />
+          Back
+        </button>
         {renderContent()}
       </div>
     </div>

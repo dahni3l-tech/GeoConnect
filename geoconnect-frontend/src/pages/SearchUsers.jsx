@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   searchUsers,
   sendFriendRequest,
@@ -10,6 +11,7 @@ function SearchUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const navigate = useNavigate();
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -52,6 +54,7 @@ function SearchUsers() {
 
   return (
     <div className="search-page">
+      <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
       <div className="search-header">
         <h2 className="page-title">Search Users</h2>
         <p className="page-subtitle">
