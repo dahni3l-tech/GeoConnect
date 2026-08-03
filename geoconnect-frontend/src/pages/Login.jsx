@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 import AuthLayout from "./AuthLayout"; 
-import "./styles/Authlayout.css"; 
+import "./styles/AuthLayout.css"; 
 import "./styles/Login.css"; 
 
 function Login() {
