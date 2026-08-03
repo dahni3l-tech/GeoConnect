@@ -23,7 +23,7 @@ import {
   addFamilyMember,
   addSafePlace,
   addEmergencyContact,
-} from "../../services/guardianService";
+} from "../services/guardianService";
 import "./styles/GuardianDashboard.css";
 
 function GuardianDashboard() {
