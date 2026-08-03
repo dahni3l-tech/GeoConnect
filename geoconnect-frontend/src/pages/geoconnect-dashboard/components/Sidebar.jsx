@@ -10,6 +10,8 @@ import {
   RiCloseLine,
   RiMapPinLine,
   RiVipCrownFill,
+  RiShieldLine,
+  RiSettings4Line,
 } from "react-icons/ri";
 import "./Sidebar.css";
 
@@ -19,8 +21,8 @@ const menuItems = [
   { id: 'friends', label: 'Friends', icon: RiGroupLine, path: '/friends' },
   { id: 'requests', label: 'Friend Requests', icon: RiUserReceivedLine, path: '/requests' },
   { id: 'premium', label: 'Premium', icon: RiVipCrownFill, path: '/premium' },
-
-  // { id: 'settings', label: 'Settings', icon: RiSettings4Line, path: '/settings' },
+  { id: 'guardian', label: 'Guardian', icon: RiShieldLine, path: '/guardian' },
+  { id: 'settings', label: 'Settings', icon: RiSettings4Line, path: '/settings' },
 ];
 
 function Sidebar({ mobileOpen, toggleMobile}) {
@@ -40,7 +42,6 @@ const handleLogout = () => {
       </button>
 
       <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
-        {/* Logo */}
         <div className="sidebar-logo">
           <div className="logo-icon">
             <RiMapPinLine size={28} />
@@ -48,7 +49,6 @@ const handleLogout = () => {
           <span className="logo-text">GeoConnect</span>
         </div>
 
-        {/* Navigation */}
         <nav className="sidebar-nav">
           {menuItems.map((item, index) => {
             const Icon = item.icon;
@@ -81,7 +81,6 @@ const handleLogout = () => {
           })}
         </nav>
 
-        {/* Logout */}
         <div className="sidebar-footer">
           <motion.button
             className="sidebar-logout"

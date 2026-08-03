@@ -1,7 +1,7 @@
 /* ============================================================
-   Activity Feed Component
-   ============================================================ */
-/*
+    Activity Feed Component
+    ============================================================ */
+
 .activity-feed {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
@@ -91,4 +91,10 @@
   background: linear-gradient(180deg, var(--border-color), transparent);
   z-index: 1;
 }
-/ */
+
+/* Responsive */
+@media (max-width: 768px) {
+  .activity-feed {
+    padding: 16px;
+  }
+}

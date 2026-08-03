@@ -1,14 +1,17 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiNotification3Line, RiMenuLine, RiCheckLine } from 'react-icons/ri';
+import { RiNotification3Line, RiMenuLine, RiCheckLine, RiUserLine, RiSettings4Line } from 'react-icons/ri';
 import { useState, useEffect, useRef } from 'react';
 import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
 } from '../../../services/pushNotificationService';
+import { useNavigate } from 'react-router-dom';
 import './Navbar.css';
 
 function Navbar({ user, toggleMobileMenu }) {
+  const navigate = useNavigate();
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -19,8 +22,10 @@ function Navbar({ user, toggleMobileMenu }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const profileRef = useRef(null);
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -46,19 +51,28 @@ function Navbar({ user, toggleMobileMenu }) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowDropdown(false);
       }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowProfile(false);
+      }
     };
 
-    if (showDropdown) {
+    if (showDropdown || showProfile) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showDropdown]);
+  }, [showDropdown, showProfile]);
 
   const handleToggleDropdown = () => {
     setShowDropdown((prev) => !prev);
+    setShowProfile(false);
+  };
+
+  const handleToggleProfile = () => {
+    setShowProfile((prev) => !prev);
+    setShowDropdown(false);
   };
 
   const handleMarkRead = async (e, notificationId) => {
@@ -189,7 +203,7 @@ function Navbar({ user, toggleMobileMenu }) {
           </AnimatePresence>
         </div>
 
-        <div className="user-avatar">
+        <div className="user-avatar" ref={profileRef} onClick={handleToggleProfile}>
           {user.profile_picture ? (
             <img
               src={user.profile_picture}
@@ -203,6 +217,56 @@ function Navbar({ user, toggleMobileMenu }) {
           )}
 
           <span className="online-status" title="Online" />
+
+          <AnimatePresence>
+            {showProfile && (
+              <motion.div
+                className="profile-dropdown"
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="profile-dropdown-header">
+                  <div className="profile-dropdown-avatar">
+                    {user.profile_picture ? (
+                      <img src={user.profile_picture} alt={user.username} />
+                    ) : (
+                      <div className="avatar-placeholder">
+                        {user.username.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="profile-dropdown-info">
+                    <span className="profile-dropdown-name">{user.username}</span>
+                    <span className="profile-dropdown-email">{user.email}</span>
+                  </div>
+                </div>
+                <div className="profile-dropdown-actions">
+                  <button
+                    className="profile-dropdown-item"
+                    onClick={() => {
+                      setShowProfile(false);
+                      navigate('/profile');
+                    }}
+                  >
+                    <RiUserLine size={18} />
+                    View Profile
+                  </button>
+                  <button
+                    className="profile-dropdown-item"
+                    onClick={() => {
+                      setShowProfile(false);
+                      navigate('/settings');
+                    }}
+                  >
+                    <RiSettings4Line size={18} />
+                    Settings
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </motion.header>

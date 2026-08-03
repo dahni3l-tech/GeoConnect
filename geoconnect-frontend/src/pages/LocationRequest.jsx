@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { respondToLocationRequest } from "../services/pushNotificationService";
 import { updateLocation } from "../services/locationService";
-import { getProfile } from "../services/profileService";
 import "./styles/LocationRequest.css";
 
 function LocationRequest() {
@@ -10,11 +9,10 @@ function LocationRequest() {
   const navigate = useNavigate();
   const requestId = searchParams.get("requestId");
   const senderUsername = searchParams.get("senderUsername") || "Someone";
-  const senderId = searchParams.get("senderId");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState(null); // "accepted" | "rejected" | null
+  const [status, setStatus] = useState(null);
 
   useEffect(() => {
     if (!requestId) {

@@ -31,6 +31,10 @@ function FriendRequests() {
     loadRequests();
   };
 
+  const getInitial = (name) => {
+    return name ? name.charAt(0).toUpperCase() : "?";
+  };
+
   return (
     <div className="friends-page">
       <h1>Friend Requests</h1>
@@ -43,21 +47,43 @@ function FriendRequests() {
             key={request.id}
             className="friend-card"
           >
-            <h3>{request.sender_username}</h3>
+            <div className="friend-card-top">
+              <div className="friend-avatar-wrap">
+                <div className="friend-avatar">
+                  {request.sender_profile_picture ? (
+                    <img
+                      src={request.sender_profile_picture}
+                      alt={request.sender_username}
+                    />
+                  ) : (
+                    <span>
+                      {getInitial(request.sender_username)}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-            <p>{request.sender_email}</p>
+              <div className="friend-name-row">
+                <h3>{request.sender_username}</h3>
+              </div>
 
-            <button
-              onClick={() => accept(request.id)}
-            >
-              Accept
-            </button>
+              <p className="friend-request-email">{request.sender_email}</p>
+            </div>
 
-            <button
-              onClick={() => reject(request.id)}
-            >
-              Reject
-            </button>
+            <div className="friend-actions">
+              <button
+                className="action-btn action-btn--primary"
+                onClick={() => accept(request.id)}
+              >
+                Accept
+              </button>
+              <button
+                className="action-btn action-btn--secondary"
+                onClick={() => reject(request.id)}
+              >
+                Reject
+              </button>
+            </div>
           </div>
         ))
       )}

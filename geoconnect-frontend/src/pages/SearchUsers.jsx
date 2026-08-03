@@ -159,11 +159,14 @@ function SearchUsers() {
                 <div className="user-info">
                   <h3 className="user-name">{user.username}</h3>
                   <p className="user-email">{user.email}</p>
+                  {user.bio && (
+                    <p className="user-bio">{user.bio}</p>
+                  )}
                 </div>
               </div>
 
-              {(user.latitude !== undefined || user.longitude !== undefined) && (
-                <div className="user-coords">
+              <div className="user-meta">
+                {(user.latitude !== undefined || user.longitude !== undefined) && (
                   <span className="coord-badge">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -178,11 +181,14 @@ function SearchUsers() {
                       <circle cx="12" cy="10" r="3"></circle>
                     </svg>
                     {user.latitude && user.longitude
-    ? "📍 Location Shared"
-    : "📍 Location Hidden"}
+     ? "📍 Location Shared"
+     : "📍 Location Hidden"}
                   </span>
-                </div>
-              )}
+                )}
+                <span className={`online-badge ${user.is_online ? "online" : "offline"}`}>
+                  {user.is_online ? "● Online" : "○ Offline"}
+                </span>
+              </div>
 
               <button
                 className="send-request-btn"

@@ -10,6 +10,7 @@ import StatsCards from './components/StatsCards';
 import QuickActions from './components/QuickActions';
 import LocationCard from './components/LocationCard';
 import MapPlaceholder from './components/MapPlaceholder';
+import ActivityFeed from './components/ActivityFeed';
 import { getProfile, getUserCache, setUserCache } from "../../services/profileService";
 import {
   getFriends,
@@ -315,6 +316,7 @@ function Dashboard() {
                 pendingRequests={pendingRequests}
               />
               <QuickActions />
+              <ActivityFeed />
             </div>
 
             <div className="dashboard-right-column">

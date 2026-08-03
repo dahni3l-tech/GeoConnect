@@ -21,20 +21,34 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+const createAvatarIcon = (image, username) => {
+  const initials = username ? username.charAt(0).toUpperCase() : "?";
+  return L.divIcon({
+    className: "custom-avatar-marker",
+    html: `
+      <div class="avatar-marker">
+        ${
+          image
+            ? `<img src="${image}" alt="${username}" />`
+            : `<span>${initials}</span>`
+        }
+      </div>
+    `,
+    iconSize: [56, 56],
+    iconAnchor: [28, 56],
+    popupAnchor: [0, -50],
+  });
+};
+
 function FriendMap() {
   const navigate = useNavigate();
   const { state } = useLocation();
   const friend = state?.friend;
-  console.log(friend);
-  console.log(friend.latitude);
-  console.log(friend.longitude);
 
-
-  
   if (!friend) {
     return <h2>Friend not found.</h2>;
   }
-  
+
   if (friend.latitude == null || friend.longitude == null) {
   return (
     <div className="friend-map-page">
@@ -72,6 +86,7 @@ function FriendMap() {
         }}
       >
         <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
@@ -80,9 +95,25 @@ function FriendMap() {
             friend.latitude,
             friend.longitude,
           ]}
+          icon={createAvatarIcon(
+            friend.profile_picture,
+            friend.username,
+            friend.bio
+          )}
         >
           <Popup>
-            {friend.username}
+            <div className="popup-profile">
+              {friend.profile_picture ? (
+                <img src={friend.profile_picture} alt={friend.username} className="popup-avatar" />
+              ) : (
+                <div className="popup-avatar placeholder">{friend.username.charAt(0).toUpperCase()}</div>
+              )}
+              <div className="popup-info">
+                <strong className="popup-username">{friend.username}</strong>
+                {friend.bio && <p className="popup-bio">{friend.bio}</p>}
+                <span className="popup-location">📍 Shared location</span>
+              </div>
+            </div>
           </Popup>
         </Marker>
 

@@ -74,6 +74,10 @@ function FriendDetails() {
 
         <h1>{friend.username}</h1>
 
+        {friend.bio && (
+          <p className="friend-bio">{friend.bio}</p>
+        )}
+
         <div className="friend-status-badge">
           <span className={`status-dot ${friend.is_online ? "online" : "offline"}`} />
           <span className="status-text">

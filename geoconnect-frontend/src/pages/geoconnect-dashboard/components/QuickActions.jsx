@@ -5,7 +5,6 @@ import {
   RiUserAddLine,
   RiUserReceivedLine,
   RiGroupLine,
-  RiRefreshLine,
   RiArrowRightLine,
 } from 'react-icons/ri';
 import './QuickActions.css';

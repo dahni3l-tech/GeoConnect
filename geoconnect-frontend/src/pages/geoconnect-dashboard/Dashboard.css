@@ -213,46 +213,102 @@
 }
 
 /* ============================================================
-   Scrollbar Styling
-   ============================================================ */
+    Activity Feed (Dashboard)
+    ============================================================ */
 
-::-webkit-scrollbar {
-  width: 6px;
+.activity-feed {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+.activity-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 3px;
+.activity-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 0;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+.activity-item:first-child {
+  padding-top: 0;
 }
 
-/* ============================================================
-   Animation Keyframes
-   ============================================================ */
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+.activity-item:last-child {
+  padding-bottom: 0;
 }
 
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
-  50% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
+.activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+  z-index: 2;
 }
 
-@keyframes gridMove {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(40px, 40px); }
+.activity-icon.blue {
+  background: linear-gradient(135deg, #2563EB, #3B82F6);
 }
 
-@keyframes ringPulse {
-  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+.activity-icon.green {
+  background: linear-gradient(135deg, #10B981, #34D399);
+}
+
+.activity-icon.orange {
+  background: linear-gradient(135deg, #F59E0B, #FBBF24);
+}
+
+.activity-icon.purple {
+  background: linear-gradient(135deg, #8B5CF6, #A78BFA);
+}
+
+.activity-icon.teal {
+  background: linear-gradient(135deg, #14B8A6, #2DD4BF);
+}
+
+.activity-content {
+  flex: 1;
+  padding-top: 4px;
+}
+
+.activity-message {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.activity-time {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.activity-connector {
+  position: absolute;
+  left: 18px;
+  top: 50px;
+  width: 2px;
+  height: calc(100% - 36px);
+  background: linear-gradient(180deg, var(--border-color), transparent);
+  z-index: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .activity-feed {
+    padding: 16px;
+  }
 }

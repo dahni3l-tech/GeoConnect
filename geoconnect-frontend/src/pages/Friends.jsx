@@ -52,6 +52,12 @@ function Friends() {
     return `Last seen ${diffDays}d ago`;
   };
 
+  const getDistance = (friend) => {
+    if (!friend.latitude || !friend.longitude) return null;
+    if (!friend.latitude || !friend.longitude) return null;
+    return `${(Math.abs(friend.latitude) + Math.abs(friend.longitude)).toFixed(2)}° away`;
+  };
+
   return (
     <div className="friends-page">
       <div className="friends-header">
@@ -108,10 +114,17 @@ function Friends() {
                 <h3>{friend.username}</h3>
               </div>
 
-              <div className="friend-status">
+              {friend.bio && (
+                <p className="friend-bio">{friend.bio}</p>
+              )}
+
+              <div className="friend-meta">
                 <span className={`status-badge ${friend.is_online ? "online" : "offline"}`}>
                   {friend.is_online ? "Online" : formatLastSeen(friend.last_seen)}
                 </span>
+                {getDistance(friend) && (
+                  <span className="distance-badge">📍 {getDistance(friend)}</span>
+                )}
               </div>
             </div>
 

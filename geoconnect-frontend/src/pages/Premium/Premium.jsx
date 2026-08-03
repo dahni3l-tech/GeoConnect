@@ -1,4 +1,3 @@
-import React from 'react';
 import './PremiumCard.css';
 
 
@@ -131,17 +130,29 @@ function Premium() {
   return (
     <div className="premium-page">
       <div className="premium-container">
-        <div className="premium-header">
-          <span className="coming-soon-badge">Coming Soon</span>
+        <div className="premium-hero">
+          <div className="premium-badge">
+            <span className="premium-badge-icon">★</span>
+            Premium
+          </div>
           <h1 className="premium-title">GeoConnect Premium</h1>
           <p className="premium-subtitle">
             Unlock powerful features designed for safer, smarter, and more connected experiences.
           </p>
+          <div className="premium-cta-hero">
+            <button className="upgrade-btn premium">Upgrade to Premium</button>
+            <p className="premium-note">Premium features are currently under development.</p>
+          </div>
         </div>
 
-        <div className="features-grid">
+        <div className="premium-features-header">
+          <h2>Everything you need, all in one place</h2>
+          <p>Premium features designed to keep you connected, safe, and in control.</p>
+        </div>
+
+        <div className="features-grid premium">
           {features.map((feature, index) => (
-            <div className="feature-card" key={index}>
+            <div className="feature-card premium" key={index}>
               <div className="feature-icon">{feature.icon}</div>
               <h3 className="feature-title">{feature.title}</h3>
               <p className="feature-desc">{feature.desc}</p>
@@ -149,9 +160,47 @@ function Premium() {
           ))}
         </div>
 
-        <div className="premium-cta">
-          <button className="upgrade-btn">Upgrade to Premium</button>
-          <p className="premium-note">Premium features are currently under development.</p>
+        <div className="premium-pricing">
+          <h2>Choose your plan</h2>
+          <div className="pricing-cards">
+            <div className="pricing-card">
+              <h3>Free</h3>
+              <div className="pricing-price">$0<span>/month</span></div>
+              <ul className="pricing-features">
+                <li>Basic location sharing</li>
+                <li>Friend requests</li>
+                <li>Chat messaging</li>
+                <li>Profile customization</li>
+              </ul>
+              <button className="btn btn-outline">Get Started</button>
+            </div>
+            <div className="pricing-card premium">
+              <div className="pricing-badge">Most Popular</div>
+              <h3>Premium</h3>
+              <div className="pricing-price">$4.99<span>/month</span></div>
+              <ul className="pricing-features">
+                <li>Everything in Free</li>
+                <li>Real-time messaging</li>
+                <li>Read receipts</li>
+                <li>End-to-end encryption</li>
+                <li>AI safety alerts</li>
+                <li>Priority support</li>
+              </ul>
+              <button className="btn btn-primary">Upgrade Now</button>
+            </div>
+            <div className="pricing-card">
+              <h3>Family</h3>
+              <div className="pricing-price">$9.99<span>/month</span></div>
+              <ul className="pricing-features">
+                <li>Everything in Premium</li>
+                <li>Family dashboard</li>
+                <li>Guardian controls</li>
+                <li>Safe zone management</li>
+                <li>Up to 10 family members</li>
+              </ul>
+              <button className="btn btn-outline">Get Started</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

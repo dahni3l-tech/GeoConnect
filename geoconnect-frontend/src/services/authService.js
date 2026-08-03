@@ -20,3 +20,12 @@ export const register = async (username, email, password) => {
 
   return response.data;
 };
+
+// Logout user
+export const logout = async () => {
+  try {
+    await api.post("logout/");
+  } catch {
+    // Ignore logout API errors
+  }
+};
