@@ -24,13 +24,45 @@ export default defineConfig({
         icons: [
           {
             src: "favicon.svg",
-            sizes: "48x46",
+            sizes: "48x48",
             type: "image/svg+xml",
+            purpose: "any",
+          },
+          {
+            src: "favicon.svg",
+            sizes: "72x72",
+            type: "image/svg+xml",
+            purpose: "any",
+          },
+          {
+            src: "favicon.svg",
+            sizes: "96x96",
+            type: "image/svg+xml",
+            purpose: "any",
+          },
+          {
+            src: "favicon.svg",
+            sizes: "144x144",
+            type: "image/svg+xml",
+            purpose: "any",
+          },
+          {
+            src: "favicon.svg",
+            sizes: "192x192",
+            type: "image/svg+xml",
+            purpose: "any",
+          },
+          {
+            src: "favicon.svg",
+            sizes: "512x512",
+            type: "image/svg+xml",
+            purpose: "any",
           },
           {
             src: "icons.svg",
             sizes: "512x512",
             type: "image/svg+xml",
+            purpose: "any",
           },
         ],
       },

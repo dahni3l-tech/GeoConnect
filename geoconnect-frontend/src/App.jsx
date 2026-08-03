@@ -12,6 +12,7 @@ import Premium from "./pages/Premium/Premium";
 import LocationRequest from "./pages/LocationRequest";
 import ProfilePage from "./pages/ProfilePage";
 import GuardianDashboard from "./pages/GuardianDashboard";
+import GuardianPermissions from "./pages/GuardianPermissions";
 
 function App() {
     return (
@@ -30,6 +31,7 @@ function App() {
             <Route path="/location-request" element={<LocationRequest />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/guardian" element={<GuardianDashboard />} />
+            <Route path="/guardian/permissions" element={<GuardianPermissions />} />
         </Routes>
     );
 }

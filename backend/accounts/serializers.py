@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import User, FriendRequest, GuardianProfile, FamilyMember, SafePlace, EmergencyContact 
+from .models import User, FriendRequest, GuardianProfile, FamilyMember, SafePlace, EmergencyContact, FamilyInvitation, FamilyMemberLink, LocationPermission, SOSAlert, RouteHistory, ActivityLog 
 
 
 
@@ -240,3 +240,75 @@ class EmergencyContactSerializer(serializers.ModelSerializer):
         model = EmergencyContact
         fields = ["id", "name", "phone", "contact_type", "created_at"]
         read_only_fields = ["id", "created_at"]
+
+
+class FamilyInvitationSerializer(serializers.ModelSerializer):
+    guardian_username = serializers.CharField(source="guardian.username", read_only=True)
+    child_username = serializers.CharField(source="child.username", read_only=True)
+
+    class Meta:
+        model = FamilyInvitation
+        fields = ["id", "guardian", "child", "guardian_username", "child_username", "relation", "nickname", "status", "created_at"]
+        read_only_fields = ["id", "guardian", "child", "status", "created_at"]
+
+
+class FamilyMemberLinkSerializer(serializers.ModelSerializer):
+    guardian_username = serializers.CharField(source="guardian.username", read_only=True)
+    child_username = serializers.CharField(source="child.username", read_only=True)
+    child_profile_picture = serializers.SerializerMethodField()
+    child_is_online = serializers.BooleanField(source="child.is_online", read_only=True)
+    child_last_seen = serializers.DateTimeField(source="child.last_seen", read_only=True)
+    child_latitude = serializers.FloatField(source="child.latitude", read_only=True)
+    child_longitude = serializers.FloatField(source="child.longitude", read_only=True)
+
+    class Meta:
+        model = FamilyMemberLink
+        fields = [
+            "id",
+            "guardian",
+            "child",
+            "guardian_username",
+            "child_username",
+            "child_profile_picture",
+            "child_is_online",
+            "child_last_seen",
+            "child_latitude",
+            "child_longitude",
+            "relation",
+            "nickname",
+            "created_at",
+        ]
+        read_only_fields = ["id", "guardian", "child", "created_at"]
+
+    def get_child_profile_picture(self, obj):
+        if obj.child.profile_picture:
+            return obj.child.profile_picture.url
+        return None
+
+
+class LocationPermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LocationPermission
+        fields = ["id", "child", "guardian", "permission_type", "paused_until", "created_at", "updated_at"]
+        read_only_fields = ["id", "child", "guardian", "created_at", "updated_at"]
+
+
+class SOSAlertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SOSAlert
+        fields = ["id", "child", "latitude", "longitude", "status", "resolved_at", "created_at"]
+        read_only_fields = ["id", "child", "created_at"]
+
+
+class RouteHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RouteHistory
+        fields = ["id", "user", "latitude", "longitude", "accuracy", "battery_level", "created_at"]
+        read_only_fields = ["id", "user", "created_at"]
+
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityLog
+        fields = ["id", "user", "activity_type", "description", "metadata", "created_at"]
+        read_only_fields = ["id", "user", "created_at"]

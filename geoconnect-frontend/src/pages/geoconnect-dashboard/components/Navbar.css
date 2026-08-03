@@ -282,6 +282,10 @@
   transition: .3s;
 }
 
+.profile-wrapper {
+  position: relative;
+}
+
 .user-avatar:hover{
     transform: scale(1.05);
 }
@@ -431,12 +435,12 @@
   }
 
   .notification-dropdown {
-    width: calc(100vw - 32px);
-    right: -40px;
+    width: calc(100vw - 80px);
+    right: -60px;
   }
 
   .profile-dropdown {
     width: calc(100vw - 32px);
-    right: -40px;
+    right: 0;
   }
 }

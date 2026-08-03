@@ -21,6 +21,16 @@ from .views import (
     FamilyMemberListCreateView,
     SafePlaceListCreateView,
     EmergencyContactListCreateView,
+    FamilyInvitationView,
+    RespondFamilyInvitationView,
+    FamilyMembersView,
+    RemoveFamilyMemberView,
+    LocationPermissionView,
+    SOSAlertListCreateView,
+    ResolveSOSAlertView,
+    RouteHistoryView,
+    ActivityLogView,
+    FamilyMapDataView,
 )
 from notifications.views import RequestLocationView, RespondLocationRequestView
 
@@ -95,5 +105,55 @@ urlpatterns = [
         "guardian/emergency-contacts/",
         EmergencyContactListCreateView.as_view(),
         name="guardian_emergency_contacts",
+    ),
+    path(
+        "guardian/invitations/",
+        FamilyInvitationView.as_view(),
+        name="guardian_invitations",
+    ),
+    path(
+        "guardian/invitations/<int:pk>/respond/",
+        RespondFamilyInvitationView.as_view(),
+        name="guardian_invitation_respond",
+    ),
+    path(
+        "guardian/family/",
+        FamilyMembersView.as_view(),
+        name="guardian_family",
+    ),
+    path(
+        "guardian/family/<int:user_id>/remove/",
+        RemoveFamilyMemberView.as_view(),
+        name="guardian_family_remove",
+    ),
+    path(
+        "guardian/permissions/",
+        LocationPermissionView.as_view(),
+        name="guardian_permissions",
+    ),
+    path(
+        "guardian/sos/",
+        SOSAlertListCreateView.as_view(),
+        name="guardian_sos",
+    ),
+    path(
+        "guardian/sos/<int:pk>/resolve/",
+        ResolveSOSAlertView.as_view(),
+        name="guardian_sos_resolve",
+    ),
+    path(
+        "guardian/route/",
+        RouteHistoryView.as_view(),
+        name="guardian_route",
+    ),
+    path(
+        "guardian/activity/",
+        ActivityLogView.as_view(),
+        name="guardian_activity",
+    ),
+    path(
+        "guardian/map-data/",
+        FamilyMapDataView.as_view(),
+        name="guardian_map_data",
     ),
 ]

@@ -203,20 +203,22 @@ function Navbar({ user, toggleMobileMenu }) {
           </AnimatePresence>
         </div>
 
-        <div className="user-avatar" ref={profileRef} onClick={handleToggleProfile}>
-          {user.profile_picture ? (
-            <img
-              src={user.profile_picture}
-              alt={user.username}
-              className="avatar-image"
-            />
-          ) : (
-            <div className="avatar-placeholder">
-              {user.username.charAt(0).toUpperCase()}
-            </div>
-          )}
+        <div className="profile-wrapper">
+          <div className="user-avatar" ref={profileRef} onClick={handleToggleProfile}>
+            {user.profile_picture ? (
+              <img
+                src={user.profile_picture}
+                alt={user.username}
+                className="avatar-image"
+              />
+            ) : (
+              <div className="avatar-placeholder">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+            )}
 
-          <span className="online-status" title="Online" />
+            <span className="online-status" title="Online" />
+          </div>
 
           <AnimatePresence>
             {showProfile && (
@@ -267,6 +269,8 @@ function Navbar({ user, toggleMobileMenu }) {
               </motion.div>
             )}
           </AnimatePresence>
+            </div>
+          </div>
         </div>
       </div>
     </motion.header>

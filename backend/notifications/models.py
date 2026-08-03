@@ -67,6 +67,9 @@ class LocationRequest(models.Model):
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ("friend_online", "Friend Online"),
+        ("friend_request", "Friend Request"),
+        ("friend_request_accepted", "Friend Request Accepted"),
+        ("friend_request_rejected", "Friend Request Rejected"),
         ("location_request", "Location Request"),
         ("location_accepted", "Location Accepted"),
         ("location_rejected", "Location Rejected"),

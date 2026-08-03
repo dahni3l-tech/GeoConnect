@@ -120,3 +120,130 @@ class EmergencyContact(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.contact_type})"
+
+
+class FamilyInvitation(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("declined", "Declined"),
+        ("blocked", "Blocked"),
+    ]
+
+    guardian = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_family_invitations")
+    child = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_family_invitations")
+    relation = models.CharField(max_length=100)
+    nickname = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("guardian", "child", "status")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.guardian.username} → {self.child.username} ({self.status})"
+
+
+class FamilyMemberLink(models.Model):
+    guardian = models.ForeignKey(User, on_delete=models.CASCADE, related_name="guardian_links")
+    child = models.ForeignKey(User, on_delete=models.CASCADE, related_name="child_links")
+    relation = models.CharField(max_length=100)
+    nickname = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("guardian", "child")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.guardian.username} ↔ {self.child.username}"
+
+
+class LocationPermission(models.Model):
+    PERMISSION_CHOICES = [
+        ("always", "Always Share"),
+        ("school_hours", "School Hours Only"),
+        ("safe_places", "Safe Places Only"),
+        ("emergencies_only", "Emergencies Only"),
+        ("paused", "Paused"),
+        ("approximate", "Approximate Location"),
+    ]
+
+    child = models.ForeignKey(User, on_delete=models.CASCADE, related_name="location_permissions")
+    guardian = models.ForeignKey(User, on_delete=models.CASCADE, related_name="granted_permissions")
+    permission_type = models.CharField(max_length=20, choices=PERMISSION_CHOICES, default="always")
+    paused_until = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("child", "guardian")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.child.username} → {self.guardian.username}: {self.permission_type}"
+
+
+class SOSAlert(models.Model):
+    child = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sos_alerts")
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    status = models.CharField(max_length=20, default="active")
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"SOS from {self.child.username} at {self.created_at}"
+
+
+class RouteHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="route_history")
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    accuracy = models.FloatField(null=True, blank=True)
+    battery_level = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} @ {self.created_at}"
+
+
+class ActivityLog(models.Model):
+    ACTIVITY_TYPES = [
+        ("family_joined", "Family Joined"),
+        ("family_left", "Family Left"),
+        ("permission_changed", "Permission Changed"),
+        ("sos_triggered", "SOS Triggered"),
+        ("sos_resolved", "SOS Resolved"),
+        ("safe_place_arrived", "Arrived at Safe Place"),
+        ("safe_place_left", "Left Safe Place"),
+        ("low_battery", "Low Battery"),
+        ("location_shared", "Location Shared"),
+        ("location_paused", "Location Paused"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="activity_logs")
+    activity_type = models.CharField(max_length=30, choices=ACTIVITY_TYPES)
+    description = models.TextField()
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username}: {self.activity_type}"
