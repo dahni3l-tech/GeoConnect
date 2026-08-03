@@ -4,6 +4,7 @@ import {
   acceptFriendRequest,
   rejectFriendRequest,
 } from "../services/friendService";
+import "./styles/AppTheme.css";
 
 function FriendRequests() {
   const [requests, setRequests] = useState([]);
@@ -37,10 +38,13 @@ function FriendRequests() {
 
   return (
     <div className="friends-page">
-      <h1>Friend Requests</h1>
+      <div className="friends-header">
+        <h1>Friend Requests</h1>
+        <p className="friends-subtitle">Review and manage your pending connections.</p>
+      </div>
 
       {requests.length === 0 ? (
-        <p>No pending requests.</p>
+        <div className="empty-friends"><p>No pending requests.</p></div>
       ) : (
         requests.map((request) => (
           <div

@@ -77,6 +77,7 @@ function FriendMap() {
       <h1>{friend.username}'s Location</h1>
 
       <MapContainer
+        className="friend-map-canvas"
         center={[friend.latitude, friend.longitude]}
         zoom={15}
         style={{

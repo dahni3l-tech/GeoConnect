@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import 'leaflet/dist/leaflet.css';
+import './pages/styles/AppTheme.css';
 
 registerSW({
   onNeedRefresh: () => {
