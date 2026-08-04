@@ -49,7 +49,7 @@ body { background: var(--surface-50); color: var(--gray-900); font-family: var(-
   font-family: var(--font-sans) !important;
 }
 
-.friends-page, .search-page, .friend-details-page, .friend-map-page, .settings-page {
+.friends-page, .search-page, .friend-details-page, .friend-map-page, .premium-page, .settings-page {
   max-width: 1200px;
   margin: 0 auto;
   padding: 3rem 1.5rem 5rem;
@@ -146,7 +146,7 @@ body { background: var(--surface-50); color: var(--gray-900); font-family: var(-
 .location-request-card { border-radius: var(--radius-card) !important; box-shadow: var(--shadow-float) !important; }
 .location-request-card.success { border-top: 4px solid var(--primary-500) !important; }
 .location-request-card.rejected { border-top: 4px solid var(--gray-400) !important; }
-.premium-page { align-items: flex-start; padding: 5rem 1.5rem; }
+.premium-page { padding: 5rem 1.5rem; }
 .settings-card { max-width: 560px; margin: 0 auto; padding: 2.5rem; border-radius: var(--radius-card); }
 .settings-card h1 { margin-bottom: 0.75rem; }
 .coming-soon-badge { text-transform: uppercase; }

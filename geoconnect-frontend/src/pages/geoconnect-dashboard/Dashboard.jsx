@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiMapPinLine, RiNotification3Line } from 'react-icons/ri';
+import { RiMapPinLine, RiNotification3Line, RiAlarmWarningLine } from 'react-icons/ri';
 import { useSearchParams, Navigate } from "react-router-dom";
 import './Dashboard.css';
 import Sidebar from './components/Sidebar';
@@ -40,11 +40,22 @@ function Dashboard() {
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [checkingSubscription, setCheckingSubscription] = useState(true);
   const [sharingLocation, setSharingLocation] = useState(false);
+  const [batteryLevel, setBatteryLevel] = useState(null);
   const lastLocation = useRef(null);
   const locationIntervalRef = useRef(null);
   const heartbeatRef = useRef(null);
   const pendingRequestsRef = useRef(null);
   const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (!navigator.getBattery) return;
+    navigator.getBattery().then((battery) => {
+      setBatteryLevel(Math.round(battery.level * 100));
+      battery.addEventListener('levelchange', () => {
+        setBatteryLevel(Math.round(battery.level * 100));
+      });
+    }).catch(() => {});
+  }, []);
 
   const startLocationSharing = useCallback(() => {
     if (locationIntervalRef.current) return;
@@ -242,6 +253,28 @@ function Dashboard() {
     }
   }, []);
 
+  const [showSOSConfirm, setShowSOSConfirm] = useState(false);
+
+  const handleSOS = async () => {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL || 'https://geoconnect-afte.onrender.com/api'}/guardian/sos/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access')}`,
+        },
+        body: JSON.stringify({
+          latitude: user?.latitude,
+          longitude: user?.longitude,
+        }),
+      });
+      setShowSOSConfirm(false);
+      alert('SOS alert sent to your guardians!');
+    } catch {
+      alert('Failed to send SOS alert. Please try again.');
+    }
+  };
+
   useEffect(() => {
     (async () => {
       await checkSubscription();
@@ -298,7 +331,7 @@ function Dashboard() {
       />
 
       <div className={`dashboard-main ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
-        <Navbar user={user} toggleMobileMenu={toggleMobileMenu} />
+        <Navbar user={user} setUser={setUser} toggleMobileMenu={toggleMobileMenu} />
 
         <motion.main
           className="dashboard-content"
@@ -315,6 +348,7 @@ function Dashboard() {
                 user={user}
                 friends={friends}
                 pendingRequests={pendingRequests}
+                batteryLevel={batteryLevel}
               />
               <QuickActions />
               <ActivityFeed />
@@ -355,6 +389,42 @@ function Dashboard() {
             <RiNotification3Line size={24} />
             {notificationLoading ? "Enabling..." : "Enable Notifications"}
           </motion.button>
+        )}
+
+        <motion.button
+          className="sos-fab"
+          onClick={() => setShowSOSConfirm(true)}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 1.2, type: "spring", stiffness: 260, damping: 20 }}
+          title="Send SOS Alert"
+        >
+          <RiAlarmWarningLine size={24} />
+        </motion.button>
+
+        {showSOSConfirm && (
+          <motion.div
+            className="sos-confirm-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onClick={() => setShowSOSConfirm(false)}
+          >
+            <motion.div
+              className="sos-confirm-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3>Send SOS Alert?</h3>
+              <p>This will immediately notify all your guardians with your current location.</p>
+              <div className="sos-confirm-actions">
+                <button className="btn-cancel" onClick={() => setShowSOSConfirm(false)}>Cancel</button>
+                <button className="btn-sos-confirm" onClick={handleSOS}>Send SOS</button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </div>
 

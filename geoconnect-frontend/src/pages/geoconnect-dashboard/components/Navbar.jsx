@@ -1,16 +1,45 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiNotification3Line, RiMenuLine, RiCheckLine, RiUserLine, RiSettings4Line } from 'react-icons/ri';
+import { RiNotification3Line, RiMenuLine, RiCheckLine, RiUserLine, RiSettings4Line, RiCameraLine, RiShieldLine, RiLogoutBoxLine } from 'react-icons/ri';
 import { useState, useEffect, useRef } from 'react';
 import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
 } from '../../../services/pushNotificationService';
+import { uploadProfilePicture, setUserCache } from '../../../services/profileService';
 import { useNavigate } from 'react-router-dom';
 import './Navbar.css';
 
-function Navbar({ user, toggleMobileMenu }) {
+function Navbar({ user, setUser, toggleMobileMenu }) {
   const navigate = useNavigate();
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const photoMenuRef = useRef(null);
+
+  const handleAvatarClick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image must be under 5MB");
+        return;
+      }
+      try {
+        const fd = new FormData();
+        fd.append("profile_picture", file);
+        const data = await uploadProfilePicture(fd);
+        const updatedUser = { ...user, profile_picture: data.profile_picture };
+        setUser?.(updatedUser);
+        setUserCache(updatedUser);
+      } catch (err) {
+        console.error("Failed to upload avatar:", err);
+        alert("Failed to upload profile picture.");
+      }
+    };
+    input.click();
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -230,7 +259,7 @@ function Navbar({ user, toggleMobileMenu }) {
                 transition={{ duration: 0.2 }}
               >
                 <div className="profile-dropdown-header">
-                  <div className="profile-dropdown-avatar">
+                  <div className="profile-dropdown-avatar" onClick={handleAvatarClick} style={{ cursor: 'pointer' }} title={user.profile_picture ? 'Change Photo' : 'Add Photo'}>
                     {user.profile_picture ? (
                       <img src={user.profile_picture} alt={user.username} />
                     ) : (
@@ -238,10 +267,16 @@ function Navbar({ user, toggleMobileMenu }) {
                         {user.username.charAt(0).toUpperCase()}
                       </div>
                     )}
+                    <div className="avatar-camera-overlay">
+                      <RiCameraLine size={16} />
+                    </div>
                   </div>
                   <div className="profile-dropdown-info">
                     <span className="profile-dropdown-name">{user.username}</span>
                     <span className="profile-dropdown-email">{user.email}</span>
+                    <span className="profile-dropdown-photo-hint" style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                      {user.profile_picture ? 'Click avatar to change photo' : 'Click avatar to add photo'}
+                    </span>
                   </div>
                 </div>
                 <div className="profile-dropdown-actions">
@@ -264,6 +299,16 @@ function Navbar({ user, toggleMobileMenu }) {
                   >
                     <RiSettings4Line size={18} />
                     Settings
+                  </button>
+                  <button
+                    className="profile-dropdown-item"
+                    onClick={() => {
+                      setShowProfile(false);
+                      navigate('/guardian');
+                    }}
+                  >
+                    <RiShieldLine size={18} />
+                    Family Safety Hub
                   </button>
                 </div>
               </motion.div>

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'; 
+import { useState, useEffect } from 'react';
 import { updateLocation } from "../../../services/locationService";
 import {
   RiMapPinLine,
@@ -6,13 +7,51 @@ import {
   RiUserLocationLine,
   RiRefreshLine,
   RiShareLine,
+  RiBatteryLine,
+  RiAlarmWarningLine,
 } from 'react-icons/ri';
 import './LocationCard.css';
 
 function LocationCard({ user, setUser, sharingLocation, onStartSharing, onStopSharing }) {
-  if (!user) {
-    return null;
-  }
+  const [batteryLevel, setBatteryLevel] = useState(null);
+  const [showSOSConfirm, setShowSOSConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!navigator.getBattery) return;
+    navigator.getBattery().then((battery) => {
+      setBatteryLevel(Math.round(battery.level * 100));
+      battery.addEventListener('levelchange', () => {
+        setBatteryLevel(Math.round(battery.level * 100));
+      });
+    }).catch(() => {});
+  }, []);
+
+  const getBatteryColor = (level) => {
+    if (level === null) return 'gray';
+    if (level > 50) return 'green';
+    if (level > 20) return 'orange';
+    return 'red';
+  };
+
+  const handleSOS = async () => {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL || 'https://geoconnect-afte.onrender.com/api'}/guardian/sos/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access')}`,
+        },
+        body: JSON.stringify({
+          latitude: user.latitude,
+          longitude: user.longitude,
+        }),
+      });
+      setShowSOSConfirm(false);
+      alert('SOS alert sent to your guardians!');
+    } catch {
+      alert('Failed to send SOS alert. Please try again.');
+    }
+  };
 
   const handleRefreshLocation = async () => {
     if (!navigator.geolocation) {
@@ -95,9 +134,23 @@ function LocationCard({ user, setUser, sharingLocation, onStartSharing, onStopSh
             <span className="loc-detail-label">IP Address</span>
             <span className="loc-detail-value">
   {user.ip_address ?? "Not Available"}
-</span>
+ </span>
           </div>
         </div>
+
+        {batteryLevel !== null && (
+          <div className="location-detail">
+            <div className="loc-detail-icon">
+              <RiBatteryLine size={18} />
+            </div>
+            <div className="loc-detail-content">
+              <span className="loc-detail-label">Battery</span>
+              <span className={`loc-detail-value battery-${getBatteryColor(batteryLevel)}`}>
+                {batteryLevel}%
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="location-actions">
@@ -132,7 +185,41 @@ function LocationCard({ user, setUser, sharingLocation, onStartSharing, onStopSh
             Stop Sharing
           </motion.button>
         )}
+
+        <motion.button
+          className="sos-btn"
+          onClick={() => setShowSOSConfirm(true)}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          title="Send SOS Alert"
+        >
+          <RiAlarmWarningLine size={18} />
+          SOS
+        </motion.button>
       </div>
+
+      {showSOSConfirm && (
+        <motion.div
+          className="sos-confirm-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          onClick={() => setShowSOSConfirm(false)}
+        >
+          <motion.div
+            className="sos-confirm-modal"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>Send SOS Alert?</h3>
+            <p>This will immediately notify all your guardians with your current location.</p>
+            <div className="sos-confirm-actions">
+              <button className="btn-cancel" onClick={() => setShowSOSConfirm(false)}>Cancel</button>
+              <button className="btn-sos-confirm" onClick={handleSOS}>Send SOS</button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

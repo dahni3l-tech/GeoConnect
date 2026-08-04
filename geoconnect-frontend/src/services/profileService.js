@@ -34,7 +34,7 @@ export const updateProfile = async (data) => {
 };
 
 export const uploadProfilePicture = async (formData) => {
-  const response = await api.post("profile/upload-avatar/", formData, {
+  const response = await api.patch("profile/", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },

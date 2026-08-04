@@ -31,11 +31,14 @@ import {
   RiSendPlaneLine,
   RiTimeLine,
   RiUserAddLine,
+  RiSearchLine,
+  RiUserForbidLine,
+  RiShieldCheckLine,
+  RiMailLine,
 } from "react-icons/ri";
 import { useNavigate } from "react-router-dom";
 import {
   getFamilyMapData,
-  getFamilyMembers,
   sendFamilyInvitation,
   getFamilyInvitations,
   respondToFamilyInvitation,
@@ -47,6 +50,7 @@ import {
   getGuardianDashboard,
   addSafePlace,
   addEmergencyContact,
+  searchUsers,
 } from "../services/guardianService";
 import {
   getPendingLocationRequests,
@@ -85,7 +89,6 @@ function GuardianDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const [inviteForm, setInviteForm] = useState({ child_identifier: "", relation: "Child", nickname: "" });
   const [safePlaceForm, setSafePlaceForm] = useState({ name: "", address: "", latitude: "", longitude: "", radius: 500 });
   const [emergencyForm, setEmergencyForm] = useState({ name: "", phone: "", contact_type: "Medical" });
 
@@ -94,7 +97,38 @@ function GuardianDashboard() {
   const [showAddSafePlace, setShowAddSafePlace] = useState(false);
   const [showAddEmergency, setShowAddEmergency] = useState(false);
   const [showRoutePlayback, setShowRoutePlayback] = useState(false);
-  const [showAddContact, setShowAddContact] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [invitingUserId, setInvitingUserId] = useState(null);
+  const [inviteRole, setInviteRole] = useState("Child");
+
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+    const R = 6371e3;
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const checkSafePlaceProximity = (member) => {
+    if (!member.latitude || !member.longitude || !dashboardData.safe_places.length) return null;
+    for (const place of dashboardData.safe_places) {
+      const distance = getDistance(member.latitude, member.longitude, place.latitude, place.longitude);
+      if (distance !== null && distance <= (place.radius || 500)) {
+        return { place, distance: Math.round(distance) };
+      }
+    }
+    return null;
+  };
 
   useEffect(() => {
     fetchAllData();
@@ -124,24 +158,53 @@ function GuardianDashboard() {
     }
   };
 
-  const handleSendInvitation = async (e) => {
+  const handleSearchUsers = async (e) => {
     e.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchResults([]);
+      setSearchError("");
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError("");
     try {
-      await sendFamilyInvitation(inviteForm);
-      setInviteForm({ child_identifier: "", relation: "Child", nickname: "" });
-      setShowInviteForm(false);
+      const results = await searchUsers(query);
+      setSearchResults(Array.isArray(results) ? results : []);
+    } catch (error) {
+      setSearchResults([]);
+      setSearchError("Failed to search users. Please try again.");
+      console.error("Search error:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSendInvitation = async (userId, role) => {
+    try {
+      await sendFamilyInvitation({
+        child_identifier: userId,
+        relation: role,
+      });
+      setSearchResults((prev) => prev.filter((u) => u.id !== userId));
+      setInvitingUserId(null);
       fetchAllData();
     } catch (error) {
       console.error("Failed to send invitation:", error);
+      const message = error.response?.data?.error || "Failed to send invitation.";
+      alert(message);
     }
   };
 
   const handleRespondInvitation = async (invitationId, action) => {
     try {
-      await respondToFamilyInvitation(invitationId, action);
+      await respondToFamilyInvitation(invitationId, action, "always");
       fetchAllData();
     } catch (error) {
       console.error("Failed to respond to invitation:", error);
+      const message = error.response?.data?.error || "Failed to respond to invitation.";
+      alert(message);
     }
   };
 
@@ -224,6 +287,7 @@ function GuardianDashboard() {
   const tabs = [
     { id: "overview", label: "Overview", icon: RiShieldLine },
     { id: "family", label: "Family", icon: RiTeamLine },
+    { id: "invitations", label: "Invitations", icon: RiMailLine },
     { id: "map", label: "Live Map", icon: RiMap2Line },
     { id: "timeline", label: "Timeline", icon: RiTimeLine },
     { id: "safe-places", label: "Safe Places", icon: RiHomeLine },
@@ -291,15 +355,18 @@ function GuardianDashboard() {
             {invitations.map((inv) => (
               <div key={inv.id} className="guardian-invitation-card">
                 <div className="invitation-info">
-                  <h4>{inv.child_username}</h4>
+                  <h4>{inv.guardian_username} wants to add you to their Family Safety Hub</h4>
                   <span>As {inv.relation}</span>
                 </div>
                 <div className="invitation-actions">
                   <button className="btn-accept" onClick={() => handleRespondInvitation(inv.id, "accept")}>
                     <RiCheckLine size={16} /> Accept
                   </button>
-                  <button className="btn-reject" onClick={() => handleRespondInvitation(inv.id, "decline")}>
+                  <button className="btn-decline" onClick={() => handleRespondInvitation(inv.id, "decline")}>
                     <RiCloseLine size={16} /> Decline
+                  </button>
+                  <button className="btn-block" onClick={() => handleRespondInvitation(inv.id, "block")}>
+                    <RiUserForbidLine size={16} /> Block
                   </button>
                 </div>
               </div>
@@ -374,44 +441,79 @@ function GuardianDashboard() {
       {showInviteForm && (
         <motion.form
           className="guardian-invite-form"
-          onSubmit={handleSendInvitation}
+          onSubmit={handleSearchUsers}
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
         >
-          <h4>Send Secure Invitation</h4>
-          <p className="form-hint">The child must accept before they appear in your Family Circle.</p>
-          <div className="form-row">
+          <h4>Search and Invite Family Member</h4>
+          <p className="form-hint">Search by username or email to send a family invitation.</p>
+          <div className="search-row">
             <input
               type="text"
-              placeholder="Username, email or phone"
-              value={inviteForm.child_identifier}
-              onChange={(e) => setInviteForm({ ...inviteForm, child_identifier: e.target.value })}
-              required
+              placeholder="Search by username or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <select
-              value={inviteForm.relation}
-              onChange={(e) => setInviteForm({ ...inviteForm, relation: e.target.value })}
-            >
-              <option value="Child">Child</option>
-              <option value="Son">Son</option>
-              <option value="Daughter">Daughter</option>
-              <option value="Spouse">Spouse</option>
-              <option value="Parent">Parent</option>
-              <option value="Sibling">Sibling</option>
-            </select>
+            <button type="submit" className="guardian-submit-btn">
+              <RiSearchLine size={18} />
+              Search
+            </button>
           </div>
-          <div className="form-row">
-            <input
-              type="text"
-              placeholder="Nickname (optional)"
-              value={inviteForm.nickname}
-              onChange={(e) => setInviteForm({ ...inviteForm, nickname: e.target.value })}
-            />
-          </div>
-          <button type="submit" className="guardian-submit-btn">
-            <RiSendPlaneLine size={18} />
-            Send Invitation
-          </button>
+
+          {isSearching && <p className="search-status">Searching...</p>}
+          {searchError && <p className="search-error">{searchError}</p>}
+
+          {searchResults.length > 0 && (
+            <div className="search-results">
+              {searchResults.map((user) => (
+                <div key={user.id} className="search-result-card">
+                  <div className="search-result-info">
+                    <div className="search-result-avatar">
+                      {user.profile_picture ? (
+                        <img src={user.profile_picture} alt={user.username} />
+                      ) : (
+                        <div className="avatar-placeholder">{user.username.charAt(0).toUpperCase()}</div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="search-result-username">{user.username}</p>
+                      <p className="search-result-email">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="search-result-actions">
+                    <select
+                      value={invitingUserId === user.id ? inviteRole : "Child"}
+                      onChange={(e) => {
+                        setInvitingUserId(user.id);
+                        setInviteRole(e.target.value);
+                      }}
+                    >
+                      <option value="Child">Child</option>
+                      <option value="Son">Son</option>
+                      <option value="Daughter">Daughter</option>
+                      <option value="Spouse">Spouse</option>
+                      <option value="Parent">Parent</option>
+                      <option value="Sibling">Sibling</option>
+                      <option value="Grandparent">Grandparent</option>
+                      <option value="Guardian">Guardian</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="guardian-submit-btn"
+                      onClick={() => handleSendInvitation(user.id, inviteRole)}
+                    >
+                      <RiSendPlaneLine size={16} />
+                      Send Invitation
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {searchQuery && !isSearching && searchResults.length === 0 && !searchError && (
+            <p className="search-empty">No users found matching "{searchQuery}"</p>
+          )}
         </motion.form>
       )}
 
@@ -466,6 +568,18 @@ function GuardianDashboard() {
                       : "Location unavailable"}
                   </span>
                 </div>
+                {(() => {
+                  const proximity = checkSafePlaceProximity(member);
+                  if (proximity) {
+                    return (
+                      <div className="detail-row safe-place-indicator">
+                        <RiHomeLine size={16} />
+                        <span>At {proximity.place.name} ({proximity.distance}m away)</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 {batteryLevel !== null && batteryLevel !== undefined && (
                   <div className="detail-row">
                     <BatteryIcon size={16} />
@@ -814,7 +928,7 @@ function GuardianDashboard() {
               {log.activity_type === "sos_resolved" && <RiCheckLine size={18} />}
               {log.activity_type === "safe_place_arrived" && <RiHomeLine size={18} />}
               {log.activity_type === "safe_place_left" && <RiWalkLine size={18} />}
-              {log.activity_type === "low_battery" && <RiBattery0Line size={18} />}
+              {log.activity_type === "low_battery" && <RiBatteryLowLine size={18} />}
               {log.activity_type === "location_shared" && <RiMapPinLine size={18} />}
               {log.activity_type === "location_paused" && <RiPauseLine size={18} />}
             </div>
@@ -835,10 +949,66 @@ function GuardianDashboard() {
     </motion.div>
   );
 
+  const renderInvitations = () => (
+    <motion.div
+      className="guardian-invitations"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h3>Family Invitations</h3>
+      <p className="section-subtitle">Manage your incoming family invitations. Accept to join a Family Safety Hub, or block to prevent future requests.</p>
+
+      {invitations.length > 0 ? (
+        <div className="invitations-list">
+          {invitations.map((inv) => (
+            <motion.div
+              key={inv.id}
+              className="invitation-card"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              <div className="invitation-card-header">
+                <div className="invitation-card-avatar">
+                  <RiShieldCheckLine size={20} />
+                </div>
+                <div>
+                  <h4>{inv.guardian_username} wants to add you to their Family Safety Hub</h4>
+                  <span className="invitation-meta">Role: {inv.relation}</span>
+                </div>
+              </div>
+              <p className="invitation-description">
+                {inv.guardian_username} wants to add you as their {inv.relation} in their Family Circle.
+              </p>
+              <div className="invitation-card-actions">
+                <button className="btn-accept" onClick={() => handleRespondInvitation(inv.id, "accept")}>
+                  <RiCheckLine size={16} /> Accept
+                </button>
+                <button className="btn-decline" onClick={() => handleRespondInvitation(inv.id, "decline")}>
+                  <RiCloseLine size={16} /> Decline
+                </button>
+                <button className="btn-block" onClick={() => handleRespondInvitation(inv.id, "block")}>
+                  <RiUserForbidLine size={16} /> Block
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <RiMailLine size={48} />
+          <p>No pending invitations</p>
+          <span>When someone invites you to their Family Safety Hub, it will appear here</span>
+        </div>
+      )}
+    </motion.div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case "overview": return renderOverview();
       case "family": return renderFamily();
+      case "invitations": return renderInvitations();
       case "map": return renderMap();
       case "timeline": return renderTimeline();
       case "safe-places": return renderSafePlaces();

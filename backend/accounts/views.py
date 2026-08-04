@@ -237,14 +237,8 @@ class UserSearchView(APIView):
             )
 
         users = User.objects.filter(
-            username__icontains=query
+            Q(username__icontains=query) | Q(email__icontains=query)
         ).exclude(id=request.user.id)
-
-        if not users.exists():
-            return Response(
-                {"message": "User not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
 
         serializer = UserSearchSerializer(users, many=True)
 
@@ -720,15 +714,27 @@ class FamilyInvitationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        blocked = FamilyInvitation.objects.filter(
+        blocked_by_sender = FamilyInvitation.objects.filter(
             guardian=request.user,
             child=child,
             status="blocked",
         ).first()
 
-        if blocked:
+        if blocked_by_sender:
             return Response(
                 {"error": "You have blocked this user from family requests."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        blocked_by_receiver = FamilyInvitation.objects.filter(
+            guardian=child,
+            child=request.user,
+            status="blocked",
+        ).first()
+
+        if blocked_by_receiver:
+            return Response(
+                {"error": "This user has blocked family requests from you."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

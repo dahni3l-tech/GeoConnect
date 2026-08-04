@@ -73,6 +73,9 @@ class Notification(models.Model):
         ("location_request", "Location Request"),
         ("location_accepted", "Location Accepted"),
         ("location_rejected", "Location Rejected"),
+        ("family_invitation", "Family Invitation"),
+        ("family_request_accepted", "Family Request Accepted"),
+        ("sos_alert", "SOS Alert"),
     ]
 
     recipient = models.ForeignKey(

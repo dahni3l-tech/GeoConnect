@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,41 +11,60 @@ import {
   RiShieldLine,
   RiSaveLine,
   RiArrowLeftLine,
+  RiLogoutBoxLine,
 } from "react-icons/ri";
+import { logout } from "../services/authService";
+import { clearUserCache } from "../services/profileService";
 import "./styles/Settings.css";
+
+const STORAGE_KEY = "geoconnect_settings";
 
 function Settings() {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("profile");
-  const [settings, setSettings] = useState({
-    theme: "dark",
-    locationPrecision: "high",
-    notifications: {
-      push: true,
-      email: true,
-      sound: false,
-    },
-    privacy: {
-      showLocation: true,
-      showProfile: true,
-      allowRequests: true,
-    },
-    guardian: {
-      enableGuardian: false,
-      shareWithGuardian: false,
-      emergencyContacts: [],
-    },
+  const [saved, setSaved] = useState(false);
+
+  const [settings, setSettings] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {
+      theme: "dark",
+      locationPrecision: "high",
+      notifications: {
+        push: true,
+        email: true,
+        sound: false,
+      },
+      privacy: {
+        showLocation: true,
+        showProfile: true,
+        allowRequests: true,
+      },
+      guardian: {
+        enableGuardian: false,
+        shareWithGuardian: false,
+        emergencyContacts: [],
+      },
+    };
   });
 
-  const sections = [
-    { id: "profile", label: "Profile", icon: RiUserLine },
-    { id: "appearance", label: "Appearance", icon: RiPaletteLine },
-    { id: "privacy", label: "Privacy", icon: RiLockLine },
-    { id: "location", label: "Location", icon: RiMapPinLine },
-    { id: "notifications", label: "Notifications", icon: RiNotificationLine },
-    { id: "guardian", label: "Guardian", icon: RiTeamLine },
-    { id: "security", label: "Security", icon: RiShieldLine },
-  ];
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    } catch {}
+  }, [settings]);
+
+  const handleSave = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      alert("Failed to save settings.");
+    }
+  };
 
   const handleToggle = (category, key) => {
     setSettings((prev) => ({
@@ -56,6 +75,22 @@ function Settings() {
       },
     }));
   };
+
+  const handleLogout = () => {
+    logout();
+    clearUserCache();
+    navigate("/login");
+  };
+
+  const sections = [
+    { id: "profile", label: "Profile", icon: RiUserLine },
+    { id: "appearance", label: "Appearance", icon: RiPaletteLine },
+    { id: "privacy", label: "Privacy", icon: RiLockLine },
+    { id: "location", label: "Location", icon: RiMapPinLine },
+    { id: "notifications", label: "Notifications", icon: RiNotificationLine },
+    { id: "guardian", label: "Guardian", icon: RiTeamLine },
+    { id: "security", label: "Security", icon: RiShieldLine },
+  ];
 
   const renderProfile = () => (
     <motion.div
@@ -77,7 +112,7 @@ function Settings() {
         <label>Bio</label>
         <textarea rows={3} placeholder="Tell people about yourself..." />
       </div>
-      <button className="btn btn-primary">
+      <button className="btn btn-primary" onClick={handleSave}>
         <RiSaveLine size={18} />
         Save Profile
       </button>
@@ -108,6 +143,10 @@ function Settings() {
           ))}
         </div>
       </div>
+      <button className="btn btn-primary" onClick={handleSave}>
+        <RiSaveLine size={18} />
+        Save Appearance
+      </button>
     </motion.div>
   );
 
@@ -137,6 +176,10 @@ function Settings() {
           </button>
         </div>
       ))}
+      <button className="btn btn-primary" onClick={handleSave}>
+        <RiSaveLine size={18} />
+        Save Privacy Settings
+      </button>
     </motion.div>
   );
 
@@ -176,6 +219,10 @@ function Settings() {
           <span className="toggle-knob" />
         </button>
       </div>
+      <button className="btn btn-primary" onClick={handleSave}>
+        <RiSaveLine size={18} />
+        Save Location Settings
+      </button>
     </motion.div>
   );
 
@@ -205,6 +252,10 @@ function Settings() {
           </button>
         </div>
       ))}
+      <button className="btn btn-primary" onClick={handleSave}>
+        <RiSaveLine size={18} />
+        Save Notification Settings
+      </button>
     </motion.div>
   );
 
@@ -240,6 +291,10 @@ function Settings() {
           <span className="toggle-knob" />
         </button>
       </div>
+      <button className="btn btn-primary" onClick={handleSave}>
+        <RiSaveLine size={18} />
+        Save Guardian Settings
+      </button>
     </motion.div>
   );
 
@@ -252,15 +307,29 @@ function Settings() {
     >
       <h3>Security Settings</h3>
       <div className="setting-field">
-        <label>Change Password</label>
-        <input type="password" placeholder="Current password" />
-        <input type="password" placeholder="New password" />
+        <label>Current Password</label>
+        <input type="password" placeholder="Enter current password" />
+      </div>
+      <div className="setting-field">
+        <label>New Password</label>
+        <input type="password" placeholder="Enter new password" />
+      </div>
+      <div className="setting-field">
+        <label>Confirm New Password</label>
         <input type="password" placeholder="Confirm new password" />
       </div>
-      <button className="btn btn-primary">
+      <button className="btn btn-primary" onClick={handleSave}>
         <RiSaveLine size={18} />
         Update Password
       </button>
+
+      <div className="settings-danger-zone" style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #E5E7EB' }}>
+        <h4 style={{ color: '#EF4444', marginBottom: 12 }}>Danger Zone</h4>
+        <button className="btn btn-danger" onClick={handleLogout}>
+          <RiLogoutBoxLine size={18} />
+          Logout
+        </button>
+      </div>
     </motion.div>
   );
 
@@ -296,10 +365,21 @@ function Settings() {
       </div>
 
       <div className="settings-main">
-        <button className="settings-back-btn" onClick={() => navigate(-1)}>
-          <RiArrowLeftLine size={18} />
-          Back
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <button className="settings-back-btn" onClick={() => navigate(-1)}>
+            <RiArrowLeftLine size={18} />
+            Back
+          </button>
+          {saved && (
+            <motion.span
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ color: '#10B981', fontWeight: 600, fontSize: '14px' }}
+            >
+              Saved successfully!
+            </motion.span>
+          )}
+        </div>
         {renderContent()}
       </div>
     </div>

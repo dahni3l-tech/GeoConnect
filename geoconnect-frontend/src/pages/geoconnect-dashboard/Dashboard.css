@@ -155,6 +155,111 @@
 }
 
 /* ============================================================
+     SOS Button
+     ============================================================ */
+
+.sos-fab {
+  position: fixed;
+  bottom: 72px;
+  right: 32px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+  z-index: 100;
+  transition: var(--transition);
+  animation: sos-pulse 2s infinite;
+}
+
+.sos-fab:hover {
+  box-shadow: 0 12px 28px rgba(239, 68, 68, 0.5);
+  transform: scale(1.05);
+}
+
+@keyframes sos-pulse {
+  0%, 100% { box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 8px 30px rgba(239, 68, 68, 0.6); }
+}
+
+.sos-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 24px;
+}
+
+.sos-confirm-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 28px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+}
+
+.sos-confirm-modal h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #1F2937;
+}
+
+.sos-confirm-modal p {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: #6B7280;
+}
+
+.sos-confirm-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.sos-confirm-actions .btn-cancel {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  background: #F3F4F6;
+  color: #374151;
+  border: 1px solid #E5E7EB;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sos-confirm-actions .btn-cancel:hover {
+  background: #E5E7EB;
+}
+
+.sos-confirm-actions .btn-sos-confirm {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  background: #EF4444;
+  color: white;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sos-confirm-actions .btn-sos-confirm:hover {
+  background: #DC2626;
+}
+
+/* ============================================================
     Mobile Overlay
     ============================================================ */
 
@@ -209,6 +314,58 @@
     right: 20px;
     width: 48px;
     height: 48px;
+  }
+
+  .sos-fab {
+    bottom: 80px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .notification-enable-btn {
+    bottom: 80px;
+    right: 20px;
+  }
+
+  .dashboard-left-column,
+  .dashboard-right-column {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-content {
+    padding: 12px;
+  }
+
+  .dashboard-grid {
+    gap: 12px;
+  }
+
+  .map-full-width .map-placeholder {
+    height: 220px;
+  }
+
+  .fab {
+    bottom: 16px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .sos-fab {
+    bottom: 72px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .notification-enable-btn {
+    bottom: 72px;
+    right: 16px;
+    font-size: 12px;
+    padding: 8px 14px;
   }
 }
 

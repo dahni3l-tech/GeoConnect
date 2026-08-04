@@ -6,10 +6,12 @@ import {
   RiUserReceivedLine,
   RiGroupLine,
   RiArrowRightLine,
+  RiShieldLine,
+  RiVipCrownFill,
+  RiSettings4Line,
+  RiAlarmWarningLine,
 } from 'react-icons/ri';
 import './QuickActions.css';
-
-
 
 const actions = [
   {
@@ -40,13 +42,27 @@ const actions = [
     color: 'purple',
     description: 'See your network',
   },
-  // {
-  //   id: 'refresh',
-  //   label: 'Refresh Location',
-  //   icon: RiRefreshLine,
-  //   color: 'teal',
-  //   description: 'Update position',
-  // },
+  {
+    id: 'guardian',
+    label: 'Family Safety Hub',
+    icon: RiShieldLine,
+    color: 'red',
+    description: 'Guardian & family',
+  },
+  {
+    id: 'premium',
+    label: 'Premium',
+    icon: RiVipCrownFill,
+    color: 'gold',
+    description: 'Upgrade features',
+  },
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: RiSettings4Line,
+    color: 'gray',
+    description: 'Manage account',
+  },
 ];
 
 function QuickActions() {
@@ -57,19 +73,24 @@ function QuickActions() {
       case "search":
         navigate("/search");
         break;
-
       case "add-friend":
         navigate("/search");
         break;
-
       case "requests":
         navigate("/requests");
         break;
-
       case "friends":
         navigate("/friends");
         break;
-
+      case "guardian":
+        navigate("/guardian");
+        break;
+      case "premium":
+        navigate("/premium");
+        break;
+      case "settings":
+        navigate("/settings");
+        break;
       default:
         console.log(`Action triggered: ${id}`);
     }

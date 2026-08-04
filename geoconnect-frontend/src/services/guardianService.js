@@ -10,6 +10,11 @@ export const updateGuardianProfile = async (data) => {
   return response.data;
 };
 
+export const searchUsers = async (query) => {
+  const response = await api.get(`users/search/?q=${encodeURIComponent(query)}`);
+  return response.data;
+};
+
 export const sendFamilyInvitation = async (data) => {
   const response = await api.post("guardian/invitations/", data);
   return response.data;

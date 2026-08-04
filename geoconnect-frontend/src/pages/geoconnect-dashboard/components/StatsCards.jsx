@@ -6,12 +6,13 @@ import {
   RiMapPinLine,
   RiGlobalLine,
   RiCheckLine,
+  RiBatteryLine,
 } from 'react-icons/ri';
 import './StatsCards.css';
 
 /* ============================================================
-    Animated Counter — smoothly counts up to target value
-    ============================================================ */
+     Animated Counter — smoothly counts up to target value
+     ============================================================ */
 function AnimatedCounter({ value, duration = 1.5 }) {
   const [displayValue, setDisplayValue] = useState(0);
   const count = useMotionValue(0);
@@ -29,8 +30,8 @@ function AnimatedCounter({ value, duration = 1.5 }) {
 }
 
 /* ============================================================
-    Single Stat Card
-    ============================================================ */
+     Single Stat Card
+     ============================================================ */
 function StatCard({ icon: Icon, label, value, format, color, delay }) {
   const displayValue = value ?? "N/A";
   return (
@@ -64,7 +65,7 @@ function StatCard({ icon: Icon, label, value, format, color, delay }) {
 }
 
 
-function StatsCards({ user, friends, pendingRequests }) {
+function StatsCards({ user, friends, pendingRequests, batteryLevel }) {
   if (!user) {
     return null;
   }
@@ -112,6 +113,14 @@ function StatsCards({ user, friends, pendingRequests }) {
       format: 'coordinate',
       color: 'purple',
       delay: 0.6,
+    },
+    {
+      icon: RiBatteryLine,
+      label: 'Battery Level',
+      value: batteryLevel ?? null,
+      format: 'number',
+      color: batteryLevel !== null && batteryLevel < 20 ? 'red' : 'gray',
+      delay: 0.7,
     },
   ];
 

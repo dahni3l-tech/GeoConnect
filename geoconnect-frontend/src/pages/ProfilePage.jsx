@@ -21,8 +21,6 @@ function ProfilePage({ user, setUser, onClose }) {
     username: "",
     email: "",
     bio: "",
-    first_name: "",
-    last_name: "",
   });
   const [avatarPreview, setAvatarPreview] = useState(null);
   const fileInputRef = useRef(null);
@@ -35,8 +33,6 @@ function ProfilePage({ user, setUser, onClose }) {
         username: user.username || "",
         email: user.email || "",
         bio: user.bio || "",
-        first_name: user.first_name || "",
-        last_name: user.last_name || "",
       });
       setAvatarPreview(user.profile_picture || null);
     }
@@ -151,33 +147,6 @@ function ProfilePage({ user, setUser, onClose }) {
           </div>
 
           <div className="profile-fields">
-            <div className="field-row">
-              <div className="field-group">
-                <label>First Name</label>
-                <input
-                  type="text"
-                  value={form.first_name}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, first_name: e.target.value }))
-                  }
-                  disabled={!editing}
-                  placeholder="First name"
-                />
-              </div>
-              <div className="field-group">
-                <label>Last Name</label>
-                <input
-                  type="text"
-                  value={form.last_name}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, last_name: e.target.value }))
-                  }
-                  disabled={!editing}
-                  placeholder="Last name"
-                />
-              </div>
-            </div>
-
             <div className="field-group">
               <label>Username</label>
               <input
