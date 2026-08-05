@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
-import { decodeToken, isTokenExpired, getTimeUntilExpiry } from "../utils/tokenUtils";
+import { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import { isTokenExpired, getTimeUntilExpiry } from "../utils/tokenUtils";
+
+/* eslint-disable react-refresh/only-export-components */
 
 const AuthContext = createContext(null);
 
@@ -58,13 +60,16 @@ export function AuthProvider({ children }) {
   }, [scheduleProactiveRefresh]);
 
   const logout = useCallback(async () => {
-    clearAuth();
-    try {
-      const module = await import("../api/axios");
-      await module.default.post("logout/").catch(() => {});
-    } catch {
-      // Ignore logout API errors
+    const refresh = localStorage.getItem(REFRESH_KEY);
+    if (refresh) {
+      try {
+        const module = await import("../api/axios");
+        await module.default.post("logout/", { refresh }).catch(() => {});
+      } catch {
+        // Ignore logout API errors
+      }
     }
+    clearAuth();
   }, [clearAuth]);
 
   const restoreAuth = useCallback(() => {
@@ -94,7 +99,8 @@ export function AuthProvider({ children }) {
     setIsLoading(false);
   }, [clearAuth, scheduleProactiveRefresh]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     restoreAuth();
   }, [restoreAuth]);
 
@@ -189,4 +195,3 @@ export function useAuth() {
   return context;
 }
 
-export default AuthContext;

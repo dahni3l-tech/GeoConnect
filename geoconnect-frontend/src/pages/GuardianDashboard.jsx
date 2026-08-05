@@ -506,7 +506,7 @@ function GuardianDashboard() {
                         {user.profile_picture ? (
                           <img src={user.profile_picture} alt={user.username} />
                         ) : (
-                          <div className="avatar-placeholder">{user.username.charAt(0).toUpperCase()}</div>
+                          <div className="avatar-placeholder">{user.username?.charAt(0).toUpperCase() || "?"}</div>
                         )}
                       </div>
                       <div className="invite-user-details">

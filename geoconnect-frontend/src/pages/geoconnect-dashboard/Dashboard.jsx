@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiMapPinLine, RiNotification3Line, RiAlarmWarningLine } from 'react-icons/ri';
 import { useSearchParams, Navigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import './Dashboard.css';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
@@ -17,6 +18,7 @@ import {
   getFriendRequests,
 } from "../../services/friendService";
 import { updateLocation } from "../../services/locationService";
+import api from "../../api/axios";
 import {
   respondToLocationRequest,
   subscribeUser,
@@ -30,6 +32,7 @@ const LOCATION_UPDATE_INTERVAL = 30000;
 const PENDING_REQUESTS_POLL_INTERVAL = 15000;
 
 function Dashboard() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchParams] = useSearchParams();
 
@@ -257,21 +260,14 @@ function Dashboard() {
 
   const handleSOS = async () => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL || 'https://geoconnect-afte.onrender.com/api'}/guardian/sos/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access')}`,
-        },
-        body: JSON.stringify({
-          latitude: user?.latitude,
-          longitude: user?.longitude,
-        }),
+      await api.post("guardian/sos/", {
+        latitude: user?.latitude,
+        longitude: user?.longitude,
       });
       setShowSOSConfirm(false);
-      alert('SOS alert sent to your guardians!');
+      alert("SOS alert sent to your guardians!");
     } catch {
-      alert('Failed to send SOS alert. Please try again.');
+      alert("Failed to send SOS alert. Please try again.");
     }
   };
 
@@ -310,7 +306,16 @@ function Dashboard() {
   };
 
 
-  if (!localStorage.getItem("access")) {
+  if (isLoading) {
+    return (
+      <div className="dashboard-loading">
+        <div className="loading-spinner" />
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

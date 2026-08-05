@@ -13,13 +13,14 @@ import {
   RiArrowLeftLine,
   RiLogoutBoxLine,
 } from "react-icons/ri";
-import { logout } from "../services/authService";
+import { useAuth } from "../context/AuthContext";
 import { clearUserCache } from "../services/profileService";
 import "./styles/Settings.css";
 
 const STORAGE_KEY = "geoconnect_settings";
 
 function Settings() {
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("profile");
   const [saved, setSaved] = useState(false);
@@ -28,7 +29,9 @@ function Settings() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return JSON.parse(raw);
-    } catch {}
+    } catch {
+      // ignore parse errors
+    }
     return {
       theme: "dark",
       locationPrecision: "high",
@@ -53,7 +56,9 @@ function Settings() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    } catch {}
+    } catch {
+      // ignore storage errors
+    }
   }, [settings]);
 
   const handleSave = () => {
@@ -62,7 +67,7 @@ function Settings() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
-      alert("Failed to save settings.");
+      // ignore storage errors
     }
   };
 
@@ -76,8 +81,8 @@ function Settings() {
     }));
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     clearUserCache();
     navigate("/login");
   };

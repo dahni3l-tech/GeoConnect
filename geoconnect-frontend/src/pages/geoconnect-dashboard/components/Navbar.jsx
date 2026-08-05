@@ -242,7 +242,7 @@ function Navbar({ user, setUser, toggleMobileMenu }) {
               />
             ) : (
               <div className="avatar-placeholder">
-                {user.username.charAt(0).toUpperCase()}
+                {user.username?.charAt(0).toUpperCase() || "?"}
               </div>
             )}
 
@@ -264,7 +264,7 @@ function Navbar({ user, setUser, toggleMobileMenu }) {
                       <img src={user.profile_picture} alt={user.username} />
                     ) : (
                       <div className="avatar-placeholder">
-                        {user.username.charAt(0).toUpperCase()}
+                        {user.username?.charAt(0).toUpperCase() || "?"}
                       </div>
                     )}
                     <div className="avatar-camera-overlay">

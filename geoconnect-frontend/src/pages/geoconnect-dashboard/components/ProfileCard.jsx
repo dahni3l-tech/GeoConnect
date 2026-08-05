@@ -27,9 +27,9 @@ function ProfileCard({ user }) {
               className="profile-avatar"
             />
           ) : (
-            <div className="profile-avatar-placeholder">
-              {user.username.charAt(0).toUpperCase()}
-            </div>
+<div className="profile-avatar-placeholder">
+                {user.username?.charAt(0).toUpperCase() || "?"}
+              </div>
           )}
           <div
             className={`location-status-badge ${

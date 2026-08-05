@@ -17,7 +17,7 @@ import GuardianDashboard from "./pages/GuardianDashboard";
 import GuardianPermissions from "./pages/GuardianPermissions";
 
 function AppRoutes() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
   if (isLoading) {
     return null;

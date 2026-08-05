@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
@@ -109,6 +110,29 @@ class LoginView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get("refresh")
+            if not refresh_token:
+                return Response(
+                    {"error": "Refresh token is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response(
+                {"message": "Logged out successfully."},
+                status=status.HTTP_200_OK,
+            )
+        except Exception:
+            return Response(
+                {"error": "Invalid token."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
@@ -685,11 +709,25 @@ class FamilyInvitationView(APIView):
                 {"error": "child_identifier and relation are required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        # Accept user ID, username, or email
+        child = None
 
-        if "@" in child_identifier:
+        # Integer ID
+        if isinstance(child_identifier, int):
+            child = User.objects.filter(id=child_identifier).first()
+
+        # Numeric string ID
+        elif str(child_identifier).isdigit():
+            child = User.objects.filter(id=int(child_identifier)).first()
+
+        # Email
+        elif "@" in str(child_identifier):
             child = User.objects.filter(email=child_identifier).first()
+
+        # Username
         else:
             child = User.objects.filter(username=child_identifier).first()
+       
 
         if not child:
             return Response(

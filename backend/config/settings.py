@@ -57,8 +57,9 @@ INSTALLED_APPS = [
      # Third-party Apps
     'rest_framework',
     'corsheaders',
+    'rest_framework_simplejwt.token_blacklist',
 
-    # Local Apps, basically the apps i created
+     # Local Apps, basically the apps i created
     'accounts',
     # 'friends',
     # 'location',
@@ -158,10 +159,10 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 # Static files (CSS, JavaScript, Images)

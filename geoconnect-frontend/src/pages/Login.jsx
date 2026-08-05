@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../services/authService";
+import { useAuth } from "../context/AuthContext";
 import AuthLayout from "./AuthLayout"; 
 import "./styles/AuthLayout.css"; 
 import "./styles/Login.css"; 
 
 function Login() {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
 
     const [form, setForm] = useState({ login: "", password: "" });
@@ -20,11 +21,7 @@ function Login() {
         setIsLoading(true);
 
         try {
-            const data = await login(form.login, form.password);
-
-            localStorage.setItem("access", data.tokens.access);
-            localStorage.setItem("refresh", data.tokens.refresh);
-            localStorage.setItem("geoconnect_user", JSON.stringify(data.user));
+            await login(form.login, form.password);
 
             alert("Login successful!");
             navigate("/dashboard");

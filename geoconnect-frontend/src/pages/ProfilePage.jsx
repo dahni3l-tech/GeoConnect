@@ -10,10 +10,11 @@ import {
   RiLogoutBoxLine,
 } from "react-icons/ri";
 import { updateProfile, uploadProfilePicture, clearUserCache, setUserCache } from "../services/profileService";
-import { logout } from "../services/authService";
+import { useAuth } from "../context/AuthContext";
 import "./styles/ProfilePage.css";
 
 function ProfilePage({ user, setUser, onClose }) {
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -87,8 +88,8 @@ function ProfilePage({ user, setUser, onClose }) {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     clearUserCache();
     navigate("/login");
   };
@@ -126,7 +127,7 @@ function ProfilePage({ user, setUser, onClose }) {
                 <img src={avatarPreview} alt={user.username} />
               ) : (
                 <div className="avatar-placeholder-large">
-                  {user.username.charAt(0).toUpperCase()}
+                  {user.username?.charAt(0).toUpperCase() || "?"}
                 </div>
               )}
               <div className="avatar-upload-overlay">
