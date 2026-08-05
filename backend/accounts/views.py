@@ -20,7 +20,7 @@ from django.utils.http import (
 from django.utils.encoding import force_bytes
 from django.utils.encoding import force_str
 from django.db.models import Q
-from .models import User, FriendRequest
+from .models import User, FriendRequest, PermissionRequest
 from notifications.models import LocationRequest, Notification, PushSubscription
 from notifications.views import broadcast_push_notifications
 from .serializers import (
@@ -38,6 +38,7 @@ from .serializers import (
     FamilyMemberSerializer,
     SafePlaceSerializer,
     EmergencyContactSerializer,
+    PermissionRequestSerializer,
 )
 from rest_framework.parsers import MultiPartParser, FormParser
 
@@ -1125,6 +1126,119 @@ class ActivityLogView(APIView):
 
         serializer = ActivityLogSerializer(logs, many=True)
         return Response(serializer.data)
+
+
+class PermissionRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.is_guardian:
+            requests = PermissionRequest.objects.filter(guardian=user)
+        else:
+            requests = PermissionRequest.objects.filter(child=user)
+        serializer = PermissionRequestSerializer(requests, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        user = request.user
+        if user.is_guardian:
+            child_id = request.data.get("child_id")
+            requested_permission = request.data.get("requested_permission")
+
+            if not child_id or not requested_permission:
+                return Response(
+                    {"error": "child_id and requested_permission are required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                child = User.objects.get(id=child_id)
+            except User.DoesNotExist:
+                return Response(
+                    {"error": "Child not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            if not FamilyMemberLink.objects.filter(guardian=user, child=child).exists():
+                return Response(
+                    {"error": "You are not linked to this family member."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            permission = LocationPermission.objects.filter(child=child, guardian=user).first()
+            current = permission.permission_type if permission else "always"
+
+            req = PermissionRequest.objects.create(
+                child=child,
+                guardian=user,
+                current_permission=current,
+                requested_permission=requested_permission,
+            )
+
+            Notification.objects.create(
+                recipient=child,
+                notification_type="permission_request",
+                title="Permission Change Request",
+                message=f"{user.username} requested to change your location sharing to {dict(LocationPermission.PERMISSION_CHOICES)[requested_permission]}.",
+                data={
+                    "type": "permission_request",
+                    "requestId": req.id,
+                    "guardianId": user.id,
+                    "guardianUsername": user.username,
+                    "currentPermission": current,
+                    "requestedPermission": requested_permission,
+                },
+            )
+
+            return Response(PermissionRequestSerializer(req).data, status=status.HTTP_201_CREATED)
+
+        else:
+            request_id = request.data.get("request_id")
+            action = request.data.get("action")
+
+            if not request_id or not action:
+                return Response(
+                    {"error": "request_id and action are required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if action not in ("accept", "decline"):
+                return Response(
+                    {"error": "Action must be 'accept' or 'decline'."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                req = PermissionRequest.objects.get(id=request_id, child=user, status="pending")
+            except PermissionRequest.DoesNotExist:
+                return Response(
+                    {"error": "Request not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            req.status = "accepted" if action == "accept" else "declined"
+            req.responded_at = timezone.now()
+            req.save()
+
+            if action == "accept":
+                permission, created = LocationPermission.objects.get_or_create(
+                    child=user,
+                    guardian=req.guardian,
+                    defaults={"permission_type": req.requested_permission},
+                )
+                if not created:
+                    permission.permission_type = req.requested_permission
+                    permission.save()
+
+                ActivityLog.objects.create(
+                    user=user,
+                    activity_type="permission_changed",
+                    description=f"{user.username} accepted permission request from {req.guardian.username} to {req.requested_permission}",
+                    metadata={"guardian_id": req.guardian.id, "permission_type": req.requested_permission},
+                )
+
+            return Response(PermissionRequestSerializer(req).data)
 
 
 class FamilyMapDataView(APIView):

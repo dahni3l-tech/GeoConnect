@@ -99,3 +99,21 @@ export const addEmergencyContact = async (data) => {
   const response = await api.post("guardian/emergency-contacts/", data);
   return response.data;
 };
+
+export const getPermissionRequests = async () => {
+  const response = await api.get("guardian/permission-requests/");
+  return response.data;
+};
+
+export const sendPermissionRequest = async (data) => {
+  const response = await api.post("guardian/permission-requests/", data);
+  return response.data;
+};
+
+export const respondToPermissionRequest = async (requestId, action) => {
+  const response = await api.post(`guardian/permission-requests/`, {
+    request_id: requestId,
+    action,
+  });
+  return response.data;
+};

@@ -247,3 +247,25 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         return f"{self.user.username}: {self.activity_type}"
+
+
+class PermissionRequest(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("declined", "Declined"),
+    ]
+
+    child = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_permission_requests")
+    guardian = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_permission_requests")
+    current_permission = models.CharField(max_length=20, choices=LocationPermission.PERMISSION_CHOICES)
+    requested_permission = models.CharField(max_length=20, choices=LocationPermission.PERMISSION_CHOICES)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Permission request from {self.guardian.username} to {self.child.username}: {self.current_permission} -> {self.requested_permission}"

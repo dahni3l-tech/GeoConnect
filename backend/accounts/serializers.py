@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
-from .models import User, FriendRequest, GuardianProfile, FamilyMember, SafePlace, EmergencyContact, FamilyInvitation, FamilyMemberLink, LocationPermission, SOSAlert, RouteHistory, ActivityLog 
+from .models import User, FriendRequest, GuardianProfile, FamilyMember, SafePlace, EmergencyContact, FamilyInvitation, FamilyMemberLink, LocationPermission, SOSAlert, RouteHistory, ActivityLog, PermissionRequest 
 
 
 
@@ -312,3 +312,13 @@ class ActivityLogSerializer(serializers.ModelSerializer):
         model = ActivityLog
         fields = ["id", "user", "activity_type", "description", "metadata", "created_at"]
         read_only_fields = ["id", "user", "created_at"]
+
+
+class PermissionRequestSerializer(serializers.ModelSerializer):
+    guardian_username = serializers.CharField(source="guardian.username", read_only=True)
+    child_username = serializers.CharField(source="child.username", read_only=True)
+
+    class Meta:
+        model = PermissionRequest
+        fields = ["id", "child", "guardian", "guardian_username", "child_username", "current_permission", "requested_permission", "status", "created_at", "responded_at"]
+        read_only_fields = ["id", "child", "guardian", "created_at"]

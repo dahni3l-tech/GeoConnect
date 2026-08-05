@@ -1262,10 +1262,30 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-.search-status {
-  font-size: 13px;
+.search-row input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.search-row .guardian-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.search-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
   color: var(--gc-text-secondary);
-  margin: 0 0 12px;
+}
+
+.search-loading p {
+  font-size: 14px;
+  margin: 0;
 }
 
 .search-error {
@@ -1274,52 +1294,94 @@
   margin: 0 0 12px;
 }
 
-.search-empty {
-  font-size: 13px;
+.search-empty-state {
+  text-align: center;
+  padding: 48px 24px;
   color: var(--gc-text-muted);
-  margin: 0 0 12px;
 }
 
-.search-results {
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--gc-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+}
+
+.empty-state-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gc-text-secondary);
+  margin: 0 0 8px;
+}
+
+.empty-state-message {
+  font-size: 14px;
+  color: var(--gc-text-muted);
+  margin: 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+
+/* Invitation Cards - Glassmorphism */
+.invite-results {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.search-result-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  padding: 14px;
-  background: var(--gc-surface);
-  border-radius: 12px;
-  border: 1px solid var(--gc-border);
+  margin-top: 16px;
 }
 
-.search-result-info {
+.invite-glass-card {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.invite-glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.invite-user-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   flex: 1;
   min-width: 0;
 }
 
-.search-result-avatar {
-  width: 40px;
-  height: 40px;
+.invite-avatar {
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.search-result-avatar img {
+.invite-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.search-result-avatar .avatar-placeholder {
+.invite-avatar .avatar-placeholder {
   width: 100%;
   height: 100%;
   background: linear-gradient(135deg, #2563EB, #3B82F6);
@@ -1328,43 +1390,115 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 18px;
 }
 
-.search-result-username {
-  font-size: 14px;
-  font-weight: 600;
+.invite-user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.invite-username {
+  font-size: 15px;
+  font-weight: 700;
   color: var(--gc-text);
-  margin: 0 0 2px;
+  margin: 0 0 4px;
 }
 
-.search-result-email {
-  font-size: 12px;
+.invite-email {
+  font-size: 13px;
   color: var(--gc-text-muted);
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.search-result-actions {
+.invite-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
-.search-result-actions select {
-  padding: 8px 10px;
-  font-size: 13px;
+.invite-role-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 10px 40px 10px 16px;
+  font-size: 14px;
   font-weight: 500;
-  color: var(--gc-text);
-  background: var(--gc-bg);
-  border: 1.5px solid var(--gc-border);
-  border-radius: 10px;
-  outline: none;
   cursor: pointer;
+  outline: none;
+  min-width: 150px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
 }
 
-.search-result-actions select:focus {
+.invite-role-select:hover {
+  background: rgba(17, 24, 39, 0.95);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.invite-role-select:focus {
   border-color: var(--gc-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+.invite-role-select option {
+  background: rgba(17, 24, 39, 0.95);
+  color: white;
+  padding: 8px;
+}
+
+.invite-send-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: var(--gc-primary);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  white-space: nowrap;
+  height: 42px;
+}
+
+.invite-send-btn:hover:not(.loading):not(:disabled) {
+  background: var(--gc-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+}
+
+.invite-send-btn.loading,
+.invite-send-btn:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
 }
 
 /* Quick Actions */
@@ -1520,6 +1654,29 @@
   .header-top {
     flex-direction: column;
   }
+
+  .invite-glass-card {
+    flex-wrap: wrap;
+  }
+
+  .invite-user-info {
+    width: 100%;
+  }
+
+  .invite-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .invite-role-select {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .invite-send-btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1534,6 +1691,33 @@
   .invitation-actions {
     flex-direction: column;
   }
+
+  .invite-glass-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .invite-user-info {
+    width: 100%;
+  }
+
+  .invite-controls {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .invite-role-select {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .invite-send-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1543,7 +1727,8 @@
   .guardian-safe-place-card,
   .guardian-emergency-card,
   .permission-card,
-  .activity-item {
+  .activity-item,
+  .invite-glass-card {
     transition: none;
   }
 }

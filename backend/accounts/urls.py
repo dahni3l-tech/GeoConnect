@@ -31,6 +31,7 @@ from .views import (
     RouteHistoryView,
     ActivityLogView,
     FamilyMapDataView,
+    PermissionRequestView,
 )
 from notifications.views import RequestLocationView, RespondLocationRequestView
 
@@ -155,5 +156,10 @@ urlpatterns = [
         "guardian/map-data/",
         FamilyMapDataView.as_view(),
         name="guardian_map_data",
+    ),
+    path(
+        "guardian/permission-requests/",
+        PermissionRequestView.as_view(),
+        name="guardian_permission_requests",
     ),
 ]

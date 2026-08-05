@@ -102,8 +102,8 @@ function GuardianDashboard() {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
-  const [invitingUserId, setInvitingUserId] = useState(null);
-  const [inviteRole, setInviteRole] = useState("Child");
+  const [inviteRoles, setInviteRoles] = useState({});
+  const [invitingUsers, setInvitingUsers] = useState({});
 
   const getDistance = (lat1, lon1, lat2, lon2) => {
     if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
@@ -182,18 +182,28 @@ function GuardianDashboard() {
   };
 
   const handleSendInvitation = async (userId, role) => {
+    setInvitingUsers((prev) => ({ ...prev, [userId]: true }));
     try {
       await sendFamilyInvitation({
         child_identifier: userId,
         relation: role,
       });
       setSearchResults((prev) => prev.filter((u) => u.id !== userId));
-      setInvitingUserId(null);
+      setInvitingUsers((prev) => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
       fetchAllData();
     } catch (error) {
       console.error("Failed to send invitation:", error);
       const message = error.response?.data?.error || "Failed to send invitation.";
       alert(message);
+      setInvitingUsers((prev) => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
     }
   };
 
@@ -454,65 +464,108 @@ function GuardianDashboard() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <button type="submit" className="guardian-submit-btn">
-              <RiSearchLine size={18} />
-              Search
+            <button type="submit" className="guardian-submit-btn" disabled={isSearching}>
+              {isSearching ? (
+                <>
+                  <span className="btn-spinner" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <RiSearchLine size={18} />
+                  Search
+                </>
+              )}
             </button>
           </div>
 
-          {isSearching && <p className="search-status">Searching...</p>}
+          {isSearching && (
+            <div className="search-loading">
+              <span className="btn-spinner" />
+              <p>Searching for users...</p>
+            </div>
+          )}
           {searchError && <p className="search-error">{searchError}</p>}
 
           {searchResults.length > 0 && (
-            <div className="search-results">
-              {searchResults.map((user) => (
-                <div key={user.id} className="search-result-card">
-                  <div className="search-result-info">
-                    <div className="search-result-avatar">
-                      {user.profile_picture ? (
-                        <img src={user.profile_picture} alt={user.username} />
-                      ) : (
-                        <div className="avatar-placeholder">{user.username.charAt(0).toUpperCase()}</div>
-                      )}
+            <div className="invite-results">
+              {searchResults.map((user) => {
+                const role = inviteRoles[user.id] || "Child";
+                const isInviting = invitingUsers[user.id];
+                return (
+                  <motion.div
+                    key={user.id}
+                    className="invite-glass-card"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    whileHover={{ y: -3, transition: { duration: 0.2 } }}
+                  >
+                    <div className="invite-user-info">
+                      <div className="invite-avatar">
+                        {user.profile_picture ? (
+                          <img src={user.profile_picture} alt={user.username} />
+                        ) : (
+                          <div className="avatar-placeholder">{user.username.charAt(0).toUpperCase()}</div>
+                        )}
+                      </div>
+                      <div className="invite-user-details">
+                        <p className="invite-username">{user.username}</p>
+                        <p className="invite-email">{user.email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="search-result-username">{user.username}</p>
-                      <p className="search-result-email">{user.email}</p>
+                    <div className="invite-controls">
+                      <select
+                        className="invite-role-select"
+                        value={role}
+                        onChange={(e) =>
+                          setInviteRoles((prev) => ({ ...prev, [user.id]: e.target.value }))
+                        }
+                      >
+                        <option value="Child">Child</option>
+                        <option value="Son">Son</option>
+                        <option value="Daughter">Daughter</option>
+                        <option value="Spouse">Spouse</option>
+                        <option value="Parent">Parent</option>
+                        <option value="Sibling">Sibling</option>
+                        <option value="Grandparent">Grandparent</option>
+                        <option value="Guardian">Guardian</option>
+                      </select>
+                      <button
+                        type="button"
+                        className={`invite-send-btn ${isInviting ? "loading" : ""}`}
+                        onClick={() => handleSendInvitation(user.id, role)}
+                        disabled={isInviting}
+                      >
+                        {isInviting ? (
+                          <>
+                            <span className="btn-spinner" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <RiSendPlaneLine size={16} />
+                            Send Invitation
+                          </>
+                        )}
+                      </button>
                     </div>
-                  </div>
-                  <div className="search-result-actions">
-                    <select
-                      value={invitingUserId === user.id ? inviteRole : "Child"}
-                      onChange={(e) => {
-                        setInvitingUserId(user.id);
-                        setInviteRole(e.target.value);
-                      }}
-                    >
-                      <option value="Child">Child</option>
-                      <option value="Son">Son</option>
-                      <option value="Daughter">Daughter</option>
-                      <option value="Spouse">Spouse</option>
-                      <option value="Parent">Parent</option>
-                      <option value="Sibling">Sibling</option>
-                      <option value="Grandparent">Grandparent</option>
-                      <option value="Guardian">Guardian</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="guardian-submit-btn"
-                      onClick={() => handleSendInvitation(user.id, inviteRole)}
-                    >
-                      <RiSendPlaneLine size={16} />
-                      Send Invitation
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           )}
 
           {searchQuery && !isSearching && searchResults.length === 0 && !searchError && (
-            <p className="search-empty">No users found matching "{searchQuery}"</p>
+            <div className="search-empty-state">
+              <div className="empty-state-icon">
+                <RiUserLine size={48} />
+              </div>
+              <p className="empty-state-title">No users found</p>
+              <p className="empty-state-message">
+                We couldn't find anyone matching "{searchQuery}". Try a different name or email.
+              </p>
+            </div>
           )}
         </motion.form>
       )}

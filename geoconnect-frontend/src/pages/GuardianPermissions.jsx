@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   RiShieldLine,
   RiUserLine,
@@ -16,15 +16,19 @@ import {
   RiAlarmWarningLine,
   RiSettingsLine,
   RiAlertLine,
+  RiSendPlaneLine,
+  RiLoader4Line,
 } from "react-icons/ri";
 import { useNavigate } from "react-router-dom";
 import {
   getFamilyMembers,
   getLocationPermissions,
-  updateLocationPermission,
   removeFamilyMember,
   getFamilyInvitations,
   respondToFamilyInvitation,
+  sendPermissionRequest,
+  getPermissionRequests,
+  respondToPermissionRequest,
 } from "../services/guardianService";
 import "./styles/GuardianPermissions.css";
 
@@ -43,9 +47,11 @@ function GuardianPermissions() {
   const [familyMembers, setFamilyMembers] = useState([]);
   const [permissions, setPermissions] = useState([]);
   const [invitations, setInvitations] = useState([]);
+  const [permissionRequests, setPermissionRequests] = useState([]);
   const [selectedGuardian, setSelectedGuardian] = useState(null);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
   const [selectedPermission, setSelectedPermission] = useState("always");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -53,14 +59,16 @@ function GuardianPermissions() {
 
   const fetchData = async () => {
     try {
-      const [members, perms, invites] = await Promise.all([
+      const [members, perms, invites, reqs] = await Promise.all([
         getFamilyMembers().catch(() => []),
         getLocationPermissions().catch(() => []),
         getFamilyInvitations().catch(() => []),
+        getPermissionRequests().catch(() => []),
       ]);
       setFamilyMembers(members);
       setPermissions(perms);
       setInvitations(invites);
+      setPermissionRequests(reqs);
     } catch (error) {
       console.error("Failed to fetch permissions data:", error);
     } finally {
@@ -68,13 +76,30 @@ function GuardianPermissions() {
     }
   };
 
-  const handlePermissionChange = async (guardianId, permissionType) => {
+  const handleSendPermissionRequest = async () => {
+    if (!selectedGuardian) return;
+    setSubmitting(true);
     try {
-      await updateLocationPermission(guardianId, permissionType);
+      await sendPermissionRequest({
+        child_id: selectedGuardian.id,
+        requested_permission: selectedPermission,
+      });
+      setShowRequestModal(false);
       await fetchData();
-      setShowPermissionModal(false);
     } catch (error) {
-      console.error("Failed to update permission:", error);
+      console.error("Failed to send permission request:", error);
+      alert(error.response?.data?.error || "Failed to send request.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRespondRequest = async (requestId, action) => {
+    try {
+      await respondToPermissionRequest(requestId, action);
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to respond to request:", error);
     }
   };
 
@@ -130,7 +155,12 @@ function GuardianPermissions() {
         </header>
 
         {invitations.length > 0 && (
-          <section className="permissions-section">
+          <motion.section
+            className="permissions-section"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
             <h2>Pending Invitations</h2>
             <div className="invitations-list">
               {invitations.map((inv) => (
@@ -158,10 +188,91 @@ function GuardianPermissions() {
                 </div>
               ))}
             </div>
-          </section>
+          </motion.section>
         )}
 
-        <section className="permissions-section">
+        {permissionRequests.length > 0 && (
+          <motion.section
+            className="permissions-section"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+          >
+            <h2>Permission Change Requests</h2>
+            <div className="requests-list">
+              {permissionRequests.map((req) => {
+                const current = getPermissionDetails(req.current_permission);
+                const requested = getPermissionDetails(req.requested_permission);
+                const CurrentIcon = current.icon;
+                const RequestedIcon = requested.icon;
+
+                return (
+                  <motion.div
+                    key={req.id}
+                    className="request-card"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="request-header">
+                      <div className="request-avatar">
+                        <div className="avatar-placeholder">{req.guardian_username.charAt(0).toUpperCase()}</div>
+                      </div>
+                      <div className="request-info">
+                        <h4>{req.guardian_username} requested a permission change</h4>
+                        <p className="request-time">{new Date(req.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    <div className="request-comparison">
+                      <div className={`request-permission-badge ${current.color}`}>
+                        <CurrentIcon size={14} />
+                        <span>Current: {current.label}</span>
+                      </div>
+                      <div className="request-arrow">
+                        <RiArrowLeftLine size={16} style={{ transform: 'rotate(180deg)' }} />
+                      </div>
+                      <div className={`request-permission-badge ${requested.color}`}>
+                        <RequestedIcon size={14} />
+                        <span>Requested: {requested.label}</span>
+                      </div>
+                    </div>
+
+                    {req.status === "pending" && (
+                      <div className="request-actions">
+                        <button
+                          className="btn-accept"
+                          onClick={() => handleRespondRequest(req.id, "accept")}
+                        >
+                          <RiCheckLine size={16} /> Accept
+                        </button>
+                        <button
+                          className="btn-decline"
+                          onClick={() => handleRespondRequest(req.id, "decline")}
+                        >
+                          <RiCloseLine size={16} /> Decline
+                        </button>
+                      </div>
+                    )}
+
+                    {req.status !== "pending" && (
+                      <div className={`request-status-badge ${req.status}`}>
+                        {req.status === "accepted" ? "Accepted" : "Declined"}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.section>
+        )}
+
+        <motion.section
+          className="permissions-section"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
           <h2>Connected Guardians</h2>
           {familyMembers.length === 0 ? (
             <div className="empty-state">
@@ -182,6 +293,7 @@ function GuardianPermissions() {
                     key={member.id}
                     className="guardian-card"
                     whileHover={{ y: -2 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   >
                     <div className="guardian-card-header">
                       <div className="guardian-avatar">
@@ -212,15 +324,15 @@ function GuardianPermissions() {
 
                     <div className="guardian-actions">
                       <button
-                        className="permission-btn"
+                        className="request-permission-btn"
                         onClick={() => {
                           setSelectedGuardian(member);
                           setSelectedPermission(permType);
-                          setShowPermissionModal(true);
+                          setShowRequestModal(true);
                         }}
                       >
-                        <RiSettingsLine size={16} />
-                        Change Permission
+                        <RiSendPlaneLine size={16} />
+                        Request Permission Change
                       </button>
                       <button
                         className="remove-btn"
@@ -235,38 +347,43 @@ function GuardianPermissions() {
               })}
             </div>
           )}
-        </section>
+        </motion.section>
 
-        <section className="permissions-section info-section">
+        <motion.section
+          className="permissions-section info-section"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        >
           <h2>How Permissions Work</h2>
           <div className="info-grid">
-            <div className="info-card">
+            <motion.div className="info-card" whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
               <RiLockLine size={24} />
               <h4>You're in control</h4>
               <p>You decide exactly who can see your location and when. Guardians cannot override your settings.</p>
-            </div>
-            <div className="info-card">
+            </motion.div>
+            <motion.div className="info-card" whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
               <RiEyeLine size={24} />
               <h4>Granular sharing</h4>
               <p>Choose from different sharing modes: always, school hours, safe places only, emergencies, or paused.</p>
-            </div>
-            <div className="info-card">
+            </motion.div>
+            <motion.div className="info-card" whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
               <RiAlertLine size={24} />
               <h4>Emergency access</h4>
               <p>During SOS alerts, your precise location is automatically shared with all connected guardians.</p>
-            </div>
+            </motion.div>
           </div>
-        </section>
+        </motion.section>
       </div>
 
       <AnimatePresence>
-        {showPermissionModal && selectedGuardian && (
+        {showRequestModal && selectedGuardian && (
           <motion.div
             className="modal-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowPermissionModal(false)}
+            onClick={() => setShowRequestModal(false)}
           >
             <motion.div
               className="permission-modal"
@@ -276,13 +393,13 @@ function GuardianPermissions() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="modal-header">
-                <h3>Change Permission</h3>
-                <button className="modal-close" onClick={() => setShowPermissionModal(false)}>
+                <h3>Request Permission Change</h3>
+                <button className="modal-close" onClick={() => setShowRequestModal(false)}>
                   <RiCloseLine size={20} />
                 </button>
               </div>
               <p className="modal-subtitle">
-                Choose how {selectedGuardian.guardian_username || selectedGuardian.child_username} can see your location
+                Request how {selectedGuardian.guardian_username || selectedGuardian.child_username} can see your location
               </p>
               <div className="permission-options">
                 {PERMISSION_OPTIONS.map((option) => {
@@ -310,14 +427,22 @@ function GuardianPermissions() {
                 })}
               </div>
               <div className="modal-actions">
-                <button className="modal-cancel" onClick={() => setShowPermissionModal(false)}>
+                <button className="modal-cancel" onClick={() => setShowRequestModal(false)}>
                   Cancel
                 </button>
                 <button
                   className="modal-save"
-                  onClick={() => handlePermissionChange(selectedGuardian.guardian_id || selectedGuardian.id, selectedPermission)}
+                  onClick={handleSendPermissionRequest}
+                  disabled={submitting}
                 >
-                  Save Permission
+                  {submitting ? (
+                    <>
+                      <RiLoader4Line size={16} className="spinner" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Request"
+                  )}
                 </button>
               </div>
             </motion.div>
