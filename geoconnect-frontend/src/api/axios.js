@@ -1,4 +1,5 @@
 import axios from "axios";
+import { isTokenExpired } from "../utils/tokenUtils";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "https://geoconnect-afte.onrender.com/api/";
 
@@ -6,7 +7,21 @@ const api = axios.create({
   baseURL: BASE_URL,
 });
 
-// Attach access token to every request
+let isRefreshing = false;
+let failedQueue = [];
+
+function processQueue(error, newAccessToken = null) {
+  failedQueue.forEach(({ resolve, reject, config }) => {
+    if (error) {
+      reject(error);
+    } else {
+      config.headers.Authorization = `Bearer ${newAccessToken}`;
+      resolve(api(config));
+    }
+  });
+  failedQueue = [];
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
 
@@ -17,30 +32,47 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle expired access tokens
 api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
     const originalRequest = error.config;
 
-    // Access token expired
     if (
       error.response?.status === 401 &&
       !originalRequest._retry
     ) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject, config: originalRequest });
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       const refresh = localStorage.getItem("refresh");
 
       if (!refresh) {
-        localStorage.clear();
+        processQueue(error, null);
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        localStorage.removeItem("geoconnect_user");
+        window.location.href = "/login";
+        return Promise.reject(error);
+      }
+
+      if (isTokenExpired(refresh)) {
+        processQueue(error, null);
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        localStorage.removeItem("geoconnect_user");
         window.location.href = "/login";
         return Promise.reject(error);
       }
 
       try {
-        const response = await axios.post(`${BASE_URL}token/refresh/`, {
+        const response = await api.post("token/refresh/", {
           refresh,
         });
 
@@ -51,13 +83,19 @@ api.interceptors.response.use(
           localStorage.setItem("refresh", response.data.refresh);
         }
 
-        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+        processQueue(null, newAccess);
 
+        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
         return api(originalRequest);
       } catch (refreshError) {
-        localStorage.clear();
+        processQueue(refreshError, null);
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        localStorage.removeItem("geoconnect_user");
         window.location.href = "/login";
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
     }
 

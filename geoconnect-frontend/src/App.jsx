@@ -1,4 +1,6 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Dashboard from './pages/geoconnect-dashboard/Dashboard';
@@ -14,26 +16,125 @@ import ProfilePage from "./pages/ProfilePage";
 import GuardianDashboard from "./pages/GuardianDashboard";
 import GuardianPermissions from "./pages/GuardianPermissions";
 
+function AppRoutes() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<Register />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/search"
+        element={
+          <ProtectedRoute>
+            <SearchUsers />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/friends"
+        element={
+          <ProtectedRoute>
+            <Friends />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/requests"
+        element={
+          <ProtectedRoute>
+            <FriendRequests />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/friends/:id"
+        element={
+          <ProtectedRoute>
+            <FriendDetails />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/friends/:id/map"
+        element={
+          <ProtectedRoute>
+            <FriendMap />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/premium"
+        element={
+          <ProtectedRoute>
+            <Premium />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/location-request"
+        element={
+          <ProtectedRoute>
+            <LocationRequest />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/guardian"
+        element={
+          <ProtectedRoute>
+            <GuardianDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/guardian/permissions"
+        element={
+          <ProtectedRoute>
+            <GuardianPermissions />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
 function App() {
-    return (
-        <Routes>
-            <Route path="/" element={<Register />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/search" element={<SearchUsers />} />
-            <Route path="/friends" element={<Friends />} />
-            <Route path="/requests" element={<FriendRequests />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/friends/:id" element={<FriendDetails />} />
-            <Route path="/friends/:id/map" element={<FriendMap />} />
-            <Route path="/premium" element={<Premium />} />
-            <Route path="/location-request" element={<LocationRequest />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/guardian" element={<GuardianDashboard />} />
-            <Route path="/guardian/permissions" element={<GuardianPermissions />} />
-        </Routes>
-    );
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  );
 }
 
 export default App;
