@@ -2,8 +2,6 @@
 
 
 
-from flask import request
-
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -20,28 +18,52 @@ from django.utils.http import (
 )
 from django.utils.encoding import force_bytes
 from django.utils.encoding import force_str
+from django.db import IntegrityError
 from django.db.models import Q
-from .models import User, FriendRequest, PermissionRequest
+from .models import (
+    User,
+    FriendRequest,
+    PermissionRequest,
+    GuardianProfile,
+    FamilyMember,
+    SafePlace,
+    EmergencyContact,
+    FamilyInvitation,
+    FamilyMemberLink,
+    LocationPermission,
+    SOSAlert,
+    RouteHistory,
+    ActivityLog,
+)
 from notifications.models import LocationRequest, Notification, PushSubscription
 from notifications.views import broadcast_push_notifications
 from .serializers import (
-    RegisterSerializer,
     LoginSerializer,
+    RegisterSerializer,
     ProfileSerializer,
-    ProfileUpdateSerializer,
     ChangePasswordSerializer,
     UserSearchSerializer,
     FriendRequestSerializer,
-    FriendRequestListSerializer,
-    FriendSerializer,
-    UpdateLocationSerializer,
     GuardianProfileSerializer,
     FamilyMemberSerializer,
     SafePlaceSerializer,
     EmergencyContactSerializer,
+    FamilyInvitationSerializer,
+    FamilyMemberLinkSerializer,
+    LocationPermissionSerializer,
+    SOSAlertSerializer,
+    ActivityLogSerializer,
+    RouteHistorySerializer,
     PermissionRequestSerializer,
 )
 from rest_framework.parsers import MultiPartParser, FormParser
+import requests
+
+
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def _send_friend_request_notification(sender, receiver, notification_type, title, message, extra_data=None):
@@ -53,21 +75,27 @@ def _send_friend_request_notification(sender, receiver, notification_type, title
     if extra_data:
         data.update(extra_data)
 
-    Notification.objects.create(
-        recipient=receiver,
-        notification_type=notification_type,
-        title=title,
-        message=message,
-        data=data,
-    )
+    try:
+        Notification.objects.create(
+            recipient=receiver,
+            notification_type=notification_type,
+            title=title,
+            message=message,
+            data=data,
+        )
+    except Exception as e:
+        logger.exception("Failed to create notification for user=%s", receiver.id)
 
-    subscriptions = PushSubscription.objects.filter(user=receiver)
-    broadcast_push_notifications(
-        subscriptions,
-        title=title,
-        body=message,
-        data=data,
-    )
+    try:
+        subscriptions = PushSubscription.objects.filter(user=receiver)
+        broadcast_push_notifications(
+            subscriptions,
+            title=title,
+            body=message,
+            data=data,
+        )
+    except Exception as e:
+        logger.exception("Failed to broadcast push notification for user=%s", receiver.id)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -132,6 +160,47 @@ class LogoutView(APIView):
             return Response(
                 {"error": "Invalid token."},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+class CloudinaryProxyView(APIView):
+    permission_classes = []
+
+    def get(self, request):
+        url = request.query_params.get("url")
+        if not url:
+            return Response(
+                {"error": "URL parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not url.startswith("https://res.cloudinary.com/"):
+            return Response(
+                {"error": "Only Cloudinary URLs are allowed."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            response = requests.get(
+                url,
+                timeout=10,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                },
+            )
+            if response.status_code != 200:
+                return Response(
+                    {"error": "Image fetch failed."},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+            content_type = response.headers.get("Content-Type", "image/jpeg")
+            return Response(
+                response.content,
+                status=status.HTTP_200_OK,
+                content_type=content_type,
+            )
+        except requests.RequestException:
+            return Response(
+                {"error": "Failed to fetch image."},
+                status=status.HTTP_502_BAD_GATEWAY,
             )
 
 class ProfileView(APIView):
@@ -559,24 +628,33 @@ class GuardianDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        profile = getattr(user, "guardian_profile", None)
+        logger.info("GuardianDashboardView GET: user=%s", request.user.username)
+        try:
+            user = request.user
+            profile = getattr(user, "guardian_profile", None)
 
-        data = {
-            "is_guardian": user.is_guardian,
-            "profile": GuardianProfileSerializer(profile).data if profile else None,
-            "family_members": FamilyMemberSerializer(profile.family_members.all(), many=True).data if profile else [],
-            "safe_places": SafePlaceSerializer(profile.safe_places.all(), many=True).data if profile else [],
-            "emergency_contacts": EmergencyContactSerializer(profile.emergency_contacts.all(), many=True).data if profile else [],
-        }
+            data = {
+                "is_guardian": user.is_guardian,
+                "profile": GuardianProfileSerializer(profile).data if profile else None,
+                "family_members": FamilyMemberSerializer(profile.family_members.all(), many=True).data if profile else [],
+                "safe_places": SafePlaceSerializer(profile.safe_places.all(), many=True).data if profile else [],
+                "emergency_contacts": EmergencyContactSerializer(profile.emergency_contacts.all(), many=True).data if profile else [],
+            }
 
-        return Response(data)
+            return Response(data)
+        except Exception as e:
+            logger.exception("GuardianDashboardView GET: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class GuardianProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
+        logger.info("GuardianProfileView PUT: user=%s", request.user.username)
         profile = getattr(request.user, "guardian_profile", None)
 
         if not profile:
@@ -598,108 +676,157 @@ class FamilyMemberListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        profile = getattr(request.user, "guardian_profile", None)
+        logger.info("FamilyMemberListCreateView GET: user=%s", request.user.username)
+        try:
+            profile = getattr(request.user, "guardian_profile", None)
 
-        if not profile:
+            if not profile:
+                return Response(
+                    {"error": "Guardian profile not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            members = profile.family_members.all()
+            serializer = FamilyMemberSerializer(members, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("FamilyMemberListCreateView GET: error")
             return Response(
-                {"error": "Guardian profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        members = profile.family_members.all()
-        serializer = FamilyMemberSerializer(members, many=True)
-        return Response(serializer.data)
 
     def post(self, request):
-        profile = getattr(request.user, "guardian_profile", None)
+        logger.info("FamilyMemberListCreateView POST: user=%s", request.user.username)
+        try:
+            profile = getattr(request.user, "guardian_profile", None)
 
-        if not profile:
+            if not profile:
+                return Response(
+                    {"error": "Guardian profile not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            serializer = FamilyMemberSerializer(data=request.data)
+
+            if serializer.is_valid():
+                serializer.save(guardian_profile=profile)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception("FamilyMemberListCreateView POST: error")
             return Response(
-                {"error": "Guardian profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        serializer = FamilyMemberSerializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save(guardian_profile=profile)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SafePlaceListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        profile = getattr(request.user, "guardian_profile", None)
+        logger.info("SafePlaceListCreateView GET: user=%s", request.user.username)
+        try:
+            profile = getattr(request.user, "guardian_profile", None)
 
-        if not profile:
+            if not profile:
+                return Response(
+                    {"error": "Guardian profile not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            places = profile.safe_places.all()
+            serializer = SafePlaceSerializer(places, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("SafePlaceListCreateView GET: error")
             return Response(
-                {"error": "Guardian profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        places = profile.safe_places.all()
-        serializer = SafePlaceSerializer(places, many=True)
-        return Response(serializer.data)
 
     def post(self, request):
-        profile = getattr(request.user, "guardian_profile", None)
+        logger.info("SafePlaceListCreateView POST: user=%s", request.user.username)
+        try:
+            profile = getattr(request.user, "guardian_profile", None)
 
-        if not profile:
+            if not profile:
+                return Response(
+                    {"error": "Guardian profile not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            serializer = SafePlaceSerializer(data=request.data)
+
+            if serializer.is_valid():
+                serializer.save(guardian_profile=profile)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception("SafePlaceListCreateView POST: error")
             return Response(
-                {"error": "Guardian profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        serializer = SafePlaceSerializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save(guardian_profile=profile)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class EmergencyContactListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        profile = getattr(request.user, "guardian_profile", None)
+        logger.info("EmergencyContactListCreateView GET: user=%s", request.user.username)
+        try:
+            profile = getattr(request.user, "guardian_profile", None)
 
-        if not profile:
+            if not profile:
+                return Response(
+                    {"error": "Guardian profile not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            contacts = profile.emergency_contacts.all()
+            serializer = EmergencyContactSerializer(contacts, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("EmergencyContactListCreateView GET: error")
             return Response(
-                {"error": "Guardian profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        contacts = profile.emergency_contacts.all()
-        serializer = EmergencyContactSerializer(contacts, many=True)
-        return Response(serializer.data)
 
     def post(self, request):
-        profile = getattr(request.user, "guardian_profile", None)
+        logger.info("EmergencyContactListCreateView POST: user=%s", request.user.username)
+        try:
+            profile = getattr(request.user, "guardian_profile", None)
 
-        if not profile:
+            if not profile:
+                return Response(
+                    {"error": "Guardian profile not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            serializer = EmergencyContactSerializer(data=request.data)
+
+            if serializer.is_valid():
+                serializer.save(guardian_profile=profile)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception("EmergencyContactListCreateView POST: error")
             return Response(
-                {"error": "Guardian profile not found."},
-                status=status.HTTP_404_NOT_FOUND,
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        serializer = EmergencyContactSerializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save(guardian_profile=profile)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class FamilyInvitationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        logger.info("FamilyInvitationView POST: request.data=%s", request.data)
         child_identifier = request.data.get("child_identifier")
         relation = request.data.get("relation")
         nickname = request.data.get("nickname", "")
@@ -727,7 +854,8 @@ class FamilyInvitationView(APIView):
         # Username
         else:
             child = User.objects.filter(username=child_identifier).first()
-       
+
+        logger.info("FamilyInvitationView POST: resolved child=%s", child)
 
         if not child:
             return Response(
@@ -777,45 +905,80 @@ class FamilyInvitationView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        invitation = FamilyInvitation.objects.create(
-            guardian=request.user,
-            child=child,
-            relation=relation,
-            nickname=nickname,
-        )
+        try:
+            invitation = FamilyInvitation.objects.create(
+                guardian=request.user,
+                child=child,
+                relation=relation,
+                nickname=nickname,
+            )
+            logger.info("FamilyInvitationView POST: created invitation id=%s", invitation.id)
+        except IntegrityError:
+            logger.warning("FamilyInvitationView POST: duplicate invitation for guardian=%s child=%s", request.user.id, child.id)
+            return Response(
+                {"error": "Invitation already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            logger.exception("FamilyInvitationView POST: failed to create invitation")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-        Notification.objects.create(
-            recipient=child,
-            notification_type="family_invitation",
-            title="Family Circle Invitation",
-            message=f"{request.user.username} wants to add you as {relation} in their Family Circle.",
-            data={
-                "type": "family_invitation",
-                "invitationId": invitation.id,
-                "guardianId": request.user.id,
-                "guardianUsername": request.user.username,
-                "relation": relation,
-            },
-        )
+        try:
+            Notification.objects.create(
+                recipient=child,
+                notification_type="family_invitation",
+                title="Family Circle Invitation",
+                message=f"{request.user.username} wants to add you as {relation} in their Family Circle.",
+                data={
+                    "type": "family_invitation",
+                    "invitationId": invitation.id,
+                    "guardianId": request.user.id,
+                    "guardianUsername": request.user.username,
+                    "relation": relation,
+                },
+            )
+            logger.info("FamilyInvitationView POST: created notification for child=%s", child.id)
+        except Exception as e:
+            logger.exception("FamilyInvitationView POST: failed to create notification")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-        subscriptions = PushSubscription.objects.filter(user=child)
-        broadcast_push_notifications(
-            subscriptions,
-            title="Family Circle Invitation",
-            body=f"{request.user.username} wants to add you as {relation} in their Family Circle.",
-            data={
-                "type": "family_invitation",
-                "invitationId": invitation.id,
-                "guardianId": request.user.id,
-                "guardianUsername": request.user.username,
-                "relation": relation,
-            },
-        )
+        try:
+            subscriptions = PushSubscription.objects.filter(user=child)
+            broadcast_push_notifications(
+                subscriptions,
+                title="Family Circle Invitation",
+                body=f"{request.user.username} wants to add you as {relation} in their Family Circle.",
+                data={
+                    "type": "family_invitation",
+                    "invitationId": invitation.id,
+                    "guardianId": request.user.id,
+                    "guardianUsername": request.user.username,
+                    "relation": relation,
+                },
+            )
+            logger.info("FamilyInvitationView POST: broadcast push notifications sent")
+        except Exception as e:
+            logger.exception("FamilyInvitationView POST: failed to broadcast push notifications")
 
-        return Response(
-            FamilyInvitationSerializer(invitation).data,
-            status=status.HTTP_201_CREATED,
-        )
+        try:
+            response_data = FamilyInvitationSerializer(invitation).data
+            logger.info("FamilyInvitationView POST: returning response status=201")
+            return Response(
+                response_data,
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            logger.exception("FamilyInvitationView POST: failed to serialize invitation")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def get(self, request):
         invitations = FamilyInvitation.objects.filter(child=request.user, status="pending")
@@ -827,6 +990,7 @@ class RespondFamilyInvitationView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        logger.info("RespondFamilyInvitationView POST: user=%s pk=%s", request.user.username, pk)
         try:
             invitation = FamilyInvitation.objects.get(
                 id=pk,
@@ -848,87 +1012,104 @@ class RespondFamilyInvitationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if action == "accept":
-            invitation.status = "accepted"
-            invitation.save()
+        try:
+            if action == "accept":
+                invitation.status = "accepted"
+                invitation.save()
 
-            FamilyMemberLink.objects.get_or_create(
-                guardian=invitation.guardian,
-                child=request.user,
-                defaults={
-                    "relation": invitation.relation,
-                    "nickname": invitation.nickname,
-                },
+                FamilyMemberLink.objects.get_or_create(
+                    guardian=invitation.guardian,
+                    child=request.user,
+                    defaults={
+                        "relation": invitation.relation,
+                        "nickname": invitation.nickname,
+                    },
+                )
+
+                LocationPermission.objects.get_or_create(
+                    child=request.user,
+                    guardian=invitation.guardian,
+                    defaults={"permission_type": permission_type},
+                )
+
+                ActivityLog.objects.create(
+                    user=request.user,
+                    activity_type="family_joined",
+                    description=f"{request.user.username} accepted family invitation from {invitation.guardian.username}",
+                    metadata={"guardian_id": invitation.guardian.id},
+                )
+
+                Notification.objects.create(
+                    recipient=invitation.guardian,
+                    notification_type="family_request_accepted",
+                    title="Family Request Accepted",
+                    message=f"{request.user.username} accepted your family invitation.",
+                    data={
+                        "type": "family_request_accepted",
+                        "childId": request.user.id,
+                        "childUsername": request.user.username,
+                    },
+                )
+
+                subscriptions = PushSubscription.objects.filter(user=invitation.guardian)
+                broadcast_push_notifications(
+                    subscriptions,
+                    title="Family Request Accepted",
+                    body=f"{request.user.username} accepted your family invitation.",
+                    data={
+                        "type": "family_request_accepted",
+                        "childId": request.user.id,
+                        "childUsername": request.user.username,
+                    },
+                )
+
+            elif action == "decline":
+                invitation.status = "declined"
+                invitation.responded_at = timezone.now()
+                invitation.save()
+
+            elif action == "block":
+                invitation.status = "blocked"
+                invitation.responded_at = timezone.now()
+                invitation.save()
+
+            logger.info("RespondFamilyInvitationView POST: action=%s status=%s", action, invitation.status)
+            return Response({"status": invitation.status})
+        except Exception as e:
+            logger.exception("RespondFamilyInvitationView POST: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-            LocationPermission.objects.get_or_create(
-                child=request.user,
-                guardian=invitation.guardian,
-                defaults={"permission_type": permission_type},
-            )
-
-            ActivityLog.objects.create(
-                user=request.user,
-                activity_type="family_joined",
-                description=f"{request.user.username} accepted family invitation from {invitation.guardian.username}",
-                metadata={"guardian_id": invitation.guardian.id},
-            )
-
-            Notification.objects.create(
-                recipient=invitation.guardian,
-                notification_type="family_request_accepted",
-                title="Family Request Accepted",
-                message=f"{request.user.username} accepted your family invitation.",
-                data={
-                    "type": "family_request_accepted",
-                    "childId": request.user.id,
-                    "childUsername": request.user.username,
-                },
-            )
-
-            subscriptions = PushSubscription.objects.filter(user=invitation.guardian)
-            broadcast_push_notifications(
-                subscriptions,
-                title="Family Request Accepted",
-                body=f"{request.user.username} accepted your family invitation.",
-                data={
-                    "type": "family_request_accepted",
-                    "childId": request.user.id,
-                    "childUsername": request.user.username,
-                },
-            )
-
-        elif action == "decline":
-            invitation.status = "declined"
-            invitation.responded_at = timezone.now()
-            invitation.save()
-
-        elif action == "block":
-            invitation.status = "blocked"
-            invitation.responded_at = timezone.now()
-            invitation.save()
-
-        return Response({"status": invitation.status})
 
 
 class FamilyMembersView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        if user.is_guardian:
-            links = FamilyMemberLink.objects.filter(guardian=user)
-        else:
-            links = FamilyMemberLink.objects.filter(child=user)
+        logger.info("FamilyMembersView GET: user=%s", request.user.username)
+        try:
+            user = request.user
+            if user.is_guardian:
+                links = FamilyMemberLink.objects.filter(guardian=user)
+            else:
+                links = FamilyMemberLink.objects.filter(child=user)
 
-        serializer = FamilyMemberLinkSerializer(links, many=True)
-        return Response(serializer.data)
+            serializer = FamilyMemberLinkSerializer(links, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("FamilyMembersView GET: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class RemoveFamilyMemberView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, user_id):
+        logger.info("RemoveFamilyMemberView DELETE: user=%s target=%s", request.user.username, user_id)
         try:
             target = User.objects.get(id=user_id)
         except User.DoesNotExist:
@@ -948,12 +1129,15 @@ class RemoveFamilyMemberView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        ActivityLog.objects.create(
-            user=request.user,
-            activity_type="family_left",
-            description=f"{request.user.username} removed {target.username} from family",
-            metadata={"removed_user_id": target.id},
-        )
+        try:
+            ActivityLog.objects.create(
+                user=request.user,
+                activity_type="family_left",
+                description=f"{request.user.username} removed {target.username} from family",
+                metadata={"removed_user_id": target.id},
+            )
+        except Exception as e:
+            logger.exception("RemoveFamilyMemberView DELETE: failed to create activity log")
 
         link.delete()
         return Response({"message": "Family member removed."})
@@ -963,16 +1147,26 @@ class LocationPermissionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        if user.is_guardian:
-            permissions = LocationPermission.objects.filter(guardian=user)
-        else:
-            permissions = LocationPermission.objects.filter(child=user)
+        logger.info("LocationPermissionView GET: user=%s", request.user.username)
+        try:
+            user = request.user
+            if user.is_guardian:
+                permissions = LocationPermission.objects.filter(guardian=user)
+            else:
+                permissions = LocationPermission.objects.filter(child=user)
 
-        serializer = LocationPermissionSerializer(permissions, many=True)
-        return Response(serializer.data)
+            serializer = LocationPermissionSerializer(permissions, many=True)
+            logger.info("LocationPermissionView GET: returning %d permissions", permissions.count())
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("LocationPermissionView GET: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def patch(self, request):
+        logger.info("LocationPermissionView PATCH: user=%s, data=%s", request.user.username, request.data)
         user = request.user
         if user.is_guardian:
             return Response(
@@ -998,42 +1192,59 @@ class LocationPermissionView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        permission, created = LocationPermission.objects.get_or_create(
-            child=user,
-            guardian=guardian,
-            defaults={"permission_type": permission_type},
-        )
+        try:
+            permission, created = LocationPermission.objects.get_or_create(
+                child=user,
+                guardian=guardian,
+                defaults={"permission_type": permission_type},
+            )
 
-        if not created:
-            permission.permission_type = permission_type
-            if paused_until is not None:
-                permission.paused_until = paused_until
-            permission.save()
+            if not created:
+                permission.permission_type = permission_type
+                if paused_until is not None:
+                    permission.paused_until = paused_until
+                permission.save()
 
-        ActivityLog.objects.create(
-            user=user,
-            activity_type="permission_changed",
-            description=f"{user.username} changed location permission for {guardian.username} to {permission_type}",
-            metadata={"guardian_id": guardian.id, "permission_type": permission_type},
-        )
+            ActivityLog.objects.create(
+                user=user,
+                activity_type="permission_changed",
+                description=f"{user.username} changed location permission for {guardian.username} to {permission_type}",
+                metadata={"guardian_id": guardian.id, "permission_type": permission_type},
+            )
 
-        return Response(LocationPermissionSerializer(permission).data)
+            logger.info("LocationPermissionView PATCH: permission updated for user=%s guardian=%s", user.username, guardian.username)
+            return Response(LocationPermissionSerializer(permission).data)
+        except Exception as e:
+            logger.exception("LocationPermissionView PATCH: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class SOSAlertListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if request.user.is_guardian:
-            child_ids = FamilyMemberLink.objects.filter(guardian=request.user).values_list("child_id", flat=True)
-            alerts = SOSAlert.objects.filter(child_id__in=child_ids)
-        else:
-            alerts = SOSAlert.objects.filter(child=request.user)
+        logger.info("SOSAlertListCreateView GET: user=%s", request.user.username)
+        try:
+            if request.user.is_guardian:
+                child_ids = FamilyMemberLink.objects.filter(guardian=request.user).values_list("child_id", flat=True)
+                alerts = SOSAlert.objects.filter(child_id__in=child_ids)
+            else:
+                alerts = SOSAlert.objects.filter(child=request.user)
 
-        serializer = SOSAlertSerializer(alerts, many=True)
-        return Response(serializer.data)
+            serializer = SOSAlertSerializer(alerts, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("SOSAlertListCreateView GET: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def post(self, request):
+        logger.info("SOSAlertListCreateView POST: user=%s", request.user.username)
         if request.user.is_guardian:
             return Response(
                 {"error": "Only children can trigger SOS alerts."},
@@ -1043,45 +1254,59 @@ class SOSAlertListCreateView(APIView):
         latitude = request.data.get("latitude")
         longitude = request.data.get("longitude")
 
-        alert = SOSAlert.objects.create(
-            child=request.user,
-            latitude=latitude,
-            longitude=longitude,
-        )
+        try:
+            alert = SOSAlert.objects.create(
+                child=request.user,
+                latitude=latitude,
+                longitude=longitude,
+            )
+            logger.info("SOSAlertListCreateView POST: created alert id=%s", alert.id)
+        except Exception as e:
+            logger.exception("SOSAlertListCreateView POST: failed to create alert")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         guardian_ids = FamilyMemberLink.objects.filter(child=request.user).values_list("guardian_id", flat=True)
         guardians = User.objects.filter(id__in=guardian_ids)
 
         for guardian in guardians:
-            Notification.objects.create(
-                recipient=guardian,
-                notification_type="sos_alert",
-                title="SOS Alert",
-                message=f"{request.user.username} triggered an SOS alert.",
-                data={
-                    "type": "sos_alert",
-                    "alertId": alert.id,
-                    "childId": request.user.id,
-                    "childUsername": request.user.username,
-                    "latitude": latitude,
-                    "longitude": longitude,
-                },
-            )
+            try:
+                Notification.objects.create(
+                    recipient=guardian,
+                    notification_type="sos_alert",
+                    title="SOS Alert",
+                    message=f"{request.user.username} triggered an SOS alert.",
+                    data={
+                        "type": "sos_alert",
+                        "alertId": alert.id,
+                        "childId": request.user.id,
+                        "childUsername": request.user.username,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                    },
+                )
+            except Exception as e:
+                logger.exception("SOSAlertListCreateView POST: failed to create notification for guardian=%s", guardian.username)
 
-            subscriptions = PushSubscription.objects.filter(user=guardian)
-            broadcast_push_notifications(
-                subscriptions,
-                title="SOS Alert",
-                body=f"{request.user.username} triggered an SOS alert.",
-                data={
-                    "type": "sos_alert",
-                    "alertId": alert.id,
-                    "childId": request.user.id,
-                    "childUsername": request.user.username,
-                    "latitude": latitude,
-                    "longitude": longitude,
-                },
-            )
+            try:
+                subscriptions = PushSubscription.objects.filter(user=guardian)
+                broadcast_push_notifications(
+                    subscriptions,
+                    title="SOS Alert",
+                    body=f"{request.user.username} triggered an SOS alert.",
+                    data={
+                        "type": "sos_alert",
+                        "alertId": alert.id,
+                        "childId": request.user.id,
+                        "childUsername": request.user.username,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                    },
+                )
+            except Exception as e:
+                logger.exception("SOSAlertListCreateView POST: failed to broadcast push for guardian=%s", guardian.username)
 
         return Response(SOSAlertSerializer(alert).data, status=status.HTTP_201_CREATED)
 
@@ -1090,6 +1315,7 @@ class ResolveSOSAlertView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        logger.info("ResolveSOSAlertView POST: user=%s pk=%s", request.user.username, pk)
         try:
             alert = SOSAlert.objects.get(id=pk, status="active")
         except SOSAlert.DoesNotExist:
@@ -1098,24 +1324,33 @@ class ResolveSOSAlertView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        alert.status = "resolved"
-        alert.resolved_at = timezone.now()
-        alert.save()
+        try:
+            alert.status = "resolved"
+            alert.resolved_at = timezone.now()
+            alert.save()
 
-        ActivityLog.objects.create(
-            user=request.user,
-            activity_type="sos_resolved",
-            description=f"SOS alert from {alert.child.username} resolved",
-            metadata={"alertId": alert.id},
-        )
+            ActivityLog.objects.create(
+                user=request.user,
+                activity_type="sos_resolved",
+                description=f"SOS alert from {alert.child.username} resolved",
+                metadata={"alertId": alert.id},
+            )
 
-        return Response({"message": "SOS alert resolved."})
+            logger.info("ResolveSOSAlertView POST: resolved alert id=%s", alert.id)
+            return Response({"message": "SOS alert resolved."})
+        except Exception as e:
+            logger.exception("ResolveSOSAlertView POST: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class RouteHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        logger.info("RouteHistoryView GET: user=%s", request.user.username)
         user_id = request.query_params.get("user_id")
         date = request.query_params.get("date")
 
@@ -1142,43 +1377,67 @@ class RouteHistoryView(APIView):
         else:
             target_user = request.user
 
-        queryset = RouteHistory.objects.filter(user=target_user)
+        try:
+            queryset = RouteHistory.objects.filter(user=target_user)
 
-        if date:
-            queryset = queryset.filter(created_at__date=date)
+            if date:
+                queryset = queryset.filter(created_at__date=date)
 
-        serializer = RouteHistorySerializer(queryset, many=True)
-        return Response(serializer.data)
+            serializer = RouteHistorySerializer(queryset, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("RouteHistoryView GET: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class ActivityLogView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        if user.is_guardian:
-            child_ids = FamilyMemberLink.objects.filter(guardian=user).values_list("child_id", flat=True)
-            logs = ActivityLog.objects.filter(user_id__in=child_ids)
-        else:
-            logs = ActivityLog.objects.filter(user=user)
+        logger.info("ActivityLogView GET: user=%s", request.user.username)
+        try:
+            user = request.user
+            if user.is_guardian:
+                child_ids = FamilyMemberLink.objects.filter(guardian=user).values_list("child_id", flat=True)
+                logs = ActivityLog.objects.filter(user_id__in=child_ids)
+            else:
+                logs = ActivityLog.objects.filter(user=user)
 
-        serializer = ActivityLogSerializer(logs, many=True)
-        return Response(serializer.data)
+            serializer = ActivityLogSerializer(logs, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("ActivityLogView GET: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class PermissionRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        if user.is_guardian:
-            requests = PermissionRequest.objects.filter(guardian=user)
-        else:
-            requests = PermissionRequest.objects.filter(child=user)
-        serializer = PermissionRequestSerializer(requests, many=True)
-        return Response(serializer.data)
+        logger.info("PermissionRequestView GET: user=%s", request.user.username)
+        try:
+            user = request.user
+            if user.is_guardian:
+                requests = PermissionRequest.objects.filter(guardian=user)
+            else:
+                requests = PermissionRequest.objects.filter(child=user)
+            serializer = PermissionRequestSerializer(requests, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.exception("PermissionRequestView GET: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def post(self, request):
+        logger.info("PermissionRequestView POST: user=%s", request.user.username)
         user = request.user
         if user.is_guardian:
             child_id = request.data.get("child_id")
@@ -1207,27 +1466,37 @@ class PermissionRequestView(APIView):
             permission = LocationPermission.objects.filter(child=child, guardian=user).first()
             current = permission.permission_type if permission else "always"
 
-            req = PermissionRequest.objects.create(
-                child=child,
-                guardian=user,
-                current_permission=current,
-                requested_permission=requested_permission,
-            )
+            try:
+                req = PermissionRequest.objects.create(
+                    child=child,
+                    guardian=user,
+                    current_permission=current,
+                    requested_permission=requested_permission,
+                )
+            except Exception as e:
+                logger.exception("PermissionRequestView POST: failed to create request")
+                return Response(
+                    {"error": str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
-            Notification.objects.create(
-                recipient=child,
-                notification_type="permission_request",
-                title="Permission Change Request",
-                message=f"{user.username} requested to change your location sharing to {dict(LocationPermission.PERMISSION_CHOICES)[requested_permission]}.",
-                data={
-                    "type": "permission_request",
-                    "requestId": req.id,
-                    "guardianId": user.id,
-                    "guardianUsername": user.username,
-                    "currentPermission": current,
-                    "requestedPermission": requested_permission,
-                },
-            )
+            try:
+                Notification.objects.create(
+                    recipient=child,
+                    notification_type="permission_request",
+                    title="Permission Change Request",
+                    message=f"{user.username} requested to change your location sharing to {dict(LocationPermission.PERMISSION_CHOICES)[requested_permission]}.",
+                    data={
+                        "type": "permission_request",
+                        "requestId": req.id,
+                        "guardianId": user.id,
+                        "guardianUsername": user.username,
+                        "currentPermission": current,
+                        "requestedPermission": requested_permission,
+                    },
+                )
+            except Exception as e:
+                logger.exception("PermissionRequestView POST: failed to create notification")
 
             return Response(PermissionRequestSerializer(req).data, status=status.HTTP_201_CREATED)
 
@@ -1260,21 +1529,28 @@ class PermissionRequestView(APIView):
             req.save()
 
             if action == "accept":
-                permission, created = LocationPermission.objects.get_or_create(
-                    child=user,
-                    guardian=req.guardian,
-                    defaults={"permission_type": req.requested_permission},
-                )
-                if not created:
-                    permission.permission_type = req.requested_permission
-                    permission.save()
+                try:
+                    permission, created = LocationPermission.objects.get_or_create(
+                        child=user,
+                        guardian=req.guardian,
+                        defaults={"permission_type": req.requested_permission},
+                    )
+                    if not created:
+                        permission.permission_type = req.requested_permission
+                        permission.save()
 
-                ActivityLog.objects.create(
-                    user=user,
-                    activity_type="permission_changed",
-                    description=f"{user.username} accepted permission request from {req.guardian.username} to {req.requested_permission}",
-                    metadata={"guardian_id": req.guardian.id, "permission_type": req.requested_permission},
-                )
+                    ActivityLog.objects.create(
+                        user=user,
+                        activity_type="permission_changed",
+                        description=f"{user.username} accepted permission request from {req.guardian.username} to {req.requested_permission}",
+                        metadata={"guardian_id": req.guardian.id, "permission_type": req.requested_permission},
+                    )
+                except Exception as e:
+                    logger.exception("PermissionRequestView POST: failed to process accept action")
+                    return Response(
+                        {"error": str(e)},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    )
 
             return Response(PermissionRequestSerializer(req).data)
 
@@ -1283,37 +1559,46 @@ class FamilyMapDataView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        logger.info("FamilyMapDataView GET: user=%s", request.user.username)
         if not request.user.is_guardian:
             return Response(
                 {"error": "Only guardians can access family map data."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        links = FamilyMemberLink.objects.filter(guardian=request.user)
-        data = []
+        try:
+            links = FamilyMemberLink.objects.filter(guardian=request.user)
+            data = []
 
-        for link in links:
-            child = link.child
-            latest_route = RouteHistory.objects.filter(user=child).first()
-            permission = LocationPermission.objects.filter(child=child, guardian=request.user).first()
+            for link in links:
+                child = link.child
+                latest_route = RouteHistory.objects.filter(user=child).first()
+                permission = LocationPermission.objects.filter(child=child, guardian=request.user).first()
 
-            data.append({
-                "id": child.id,
-                "username": child.username,
-                "profile_picture": child.profile_picture.url if child.profile_picture else None,
-                "is_online": child.is_online,
-                "last_seen": child.last_seen,
-                "latitude": child.latitude,
-                "longitude": child.longitude,
-                "relation": link.relation,
-                "nickname": link.nickname,
-                "permission_type": permission.permission_type if permission else "always",
-                "latest_location": {
-                    "latitude": latest_route.latitude,
-                    "longitude": latest_route.longitude,
-                    "battery_level": latest_route.battery_level,
-                    "created_at": latest_route.created_at,
-                } if latest_route else None,
-            })
+                data.append({
+                    "id": child.id,
+                    "username": child.username,
+                    "profile_picture": child.profile_picture.url if child.profile_picture else None,
+                    "is_online": child.is_online,
+                    "last_seen": child.last_seen,
+                    "latitude": child.latitude,
+                    "longitude": child.longitude,
+                    "relation": link.relation,
+                    "nickname": link.nickname,
+                    "permission_type": permission.permission_type if permission else "always",
+                    "latest_location": {
+                        "latitude": latest_route.latitude,
+                        "longitude": latest_route.longitude,
+                        "battery_level": latest_route.battery_level,
+                        "created_at": latest_route.created_at,
+                    } if latest_route else None,
+                })
 
-        return Response(data)
+            logger.info("FamilyMapDataView GET: returning %d family members", len(data))
+            return Response(data)
+        except Exception as e:
+            logger.exception("FamilyMapDataView GET: error")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
