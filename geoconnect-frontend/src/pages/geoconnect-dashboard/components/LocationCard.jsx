@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'; 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { updateLocation } from "../../../services/locationService";
 import {
   RiMapPinLine,
@@ -12,19 +12,8 @@ import {
 } from 'react-icons/ri';
 import './LocationCard.css';
 
-function LocationCard({ user, setUser, sharingLocation, onStartSharing, onStopSharing }) {
-  const [batteryLevel, setBatteryLevel] = useState(null);
+function LocationCard({ user, setUser, sharingLocation, onStartSharing, onStopSharing, batteryLevel }) {
   const [showSOSConfirm, setShowSOSConfirm] = useState(false);
-
-  useEffect(() => {
-    if (!navigator.getBattery) return;
-    navigator.getBattery().then((battery) => {
-      setBatteryLevel(Math.round(battery.level * 100));
-      battery.addEventListener('levelchange', () => {
-        setBatteryLevel(Math.round(battery.level * 100));
-      });
-    }).catch(() => {});
-  }, []);
 
   const getBatteryColor = (level) => {
     if (level === null) return 'gray';

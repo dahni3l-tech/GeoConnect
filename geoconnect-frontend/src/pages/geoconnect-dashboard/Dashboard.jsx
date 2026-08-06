@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { RiMapPinLine, RiNotification3Line, RiAlarmWarningLine } from 'react-icons/ri';
 import { useSearchParams, Navigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth, useGlobalIntervals } from "../../context/AuthContext";
 import './Dashboard.css';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
@@ -15,7 +15,6 @@ import ActivityFeed from './components/ActivityFeed';
 import { getProfile, getUserCache, setUserCache } from "../../services/profileService";
 import {
   getFriends,
-  getFriendRequests,
 } from "../../services/friendService";
 import { updateLocation } from "../../services/locationService";
 import api from "../../api/axios";
@@ -23,16 +22,14 @@ import {
   respondToLocationRequest,
   subscribeUser,
   checkBackendSubscription,
-  updateOnlineStatus,
   getPendingLocationRequests,
 } from "../../services/pushNotificationService";
 
-const ONLINE_HEARTBEAT_INTERVAL = 30000;
-const LOCATION_UPDATE_INTERVAL = 30000;
 const PENDING_REQUESTS_POLL_INTERVAL = 15000;
 
 function Dashboard() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { sharingLocation, startLocationSharing, stopLocationSharing, batteryLevel } = useGlobalIntervals();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchParams] = useSearchParams();
 
@@ -42,78 +39,16 @@ function Dashboard() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [checkingSubscription, setCheckingSubscription] = useState(true);
-  const [sharingLocation, setSharingLocation] = useState(false);
-  const [batteryLevel, setBatteryLevel] = useState(null);
-  const lastLocation = useRef(null);
-  const locationIntervalRef = useRef(null);
-  const heartbeatRef = useRef(null);
   const pendingRequestsRef = useRef(null);
   const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!navigator.getBattery) return;
-    navigator.getBattery().then((battery) => {
-      setBatteryLevel(Math.round(battery.level * 100));
-      battery.addEventListener('levelchange', () => {
-        setBatteryLevel(Math.round(battery.level * 100));
-      });
-    }).catch(() => {});
-  }, []);
-
-  const startLocationSharing = useCallback(() => {
-    if (locationIntervalRef.current) return;
-
-    const update = async () => {
-      if (!navigator.geolocation) return;
-
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const newLat = position.coords.latitude;
-            const newLng = position.coords.longitude;
-
-            if (
-              lastLocation.current &&
-              Math.abs(lastLocation.current.lat - newLat) < 0.00005 &&
-              Math.abs(lastLocation.current.lng - newLng) < 0.00005
-            ) {
-              return;
-            }
-
-            await updateLocation(newLat, newLng);
-            lastLocation.current = { lat: newLat, lng: newLng };
-
-            setUser((prev) => ({
-              ...prev,
-              latitude: newLat,
-              longitude: newLng,
-            }));
-          } catch (error) {
-            console.error("Failed to update location:", error);
-          }
-        },
-        (error) => {
-          console.error("Unable to get your location:", error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        }
-      );
+    const handler = (e) => {
+      const { latitude, longitude } = e.detail;
+      setUser((prev) => ({ ...prev, latitude, longitude }));
     };
-
-    update();
-    locationIntervalRef.current = setInterval(update, LOCATION_UPDATE_INTERVAL);
-    setSharingLocation(true);
-  }, []);
-
-  const stopLocationSharing = useCallback(() => {
-    if (locationIntervalRef.current) {
-      clearInterval(locationIntervalRef.current);
-      locationIntervalRef.current = null;
-    }
-    setSharingLocation(false);
+    window.addEventListener("location:updated", handler);
+    return () => window.removeEventListener("location:updated", handler);
   }, []);
 
   useEffect(() => {
@@ -145,7 +80,7 @@ function Dashboard() {
           }
         },
         async (error) => {
-          console.log("Location permission denied.", error);
+          console.error("Location permission denied:", error);
           await respondToLocationRequest(requestId, "rejected");
         },
         {
@@ -169,13 +104,8 @@ function Dashboard() {
         setUser(profile);
         setUserCache(profile);
 
-        const [friendsData, pendingData] = await Promise.all([
-          getFriends().catch(() => []),
-          getFriendRequests().catch(() => []),
-        ]);
-
+        const friendsData = await getFriends().catch(() => []);
         setFriends(friendsData);
-        setPendingRequests(pendingData);
 
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
@@ -196,7 +126,7 @@ function Dashboard() {
               }
             },
             (error) => {
-              console.log("Location permission denied.", error);
+              console.error("Location permission denied:", error);
             }
           );
         }
@@ -205,47 +135,30 @@ function Dashboard() {
       }
     };
 
-    fetchDashboardData();
-
-    const sendHeartbeat = () => {
-      updateOnlineStatus(true).catch(() => {});
-      console.log("[Dashboard] Heartbeat sent to server to indicate online status.");
-    };
-
-    heartbeatRef.current = setInterval(sendHeartbeat, ONLINE_HEARTBEAT_INTERVAL);
-    sendHeartbeat();
-
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        sendHeartbeat();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    pendingRequestsRef.current = setInterval(async () => {
+    const fetchPendingRequests = async () => {
       try {
         const pending = await getPendingLocationRequests();
         setPendingRequests(pending);
       } catch (err) {
         console.error("Failed to fetch pending requests:", err);
       }
-    }, PENDING_REQUESTS_POLL_INTERVAL);
+    };
+
+    fetchDashboardData();
+    fetchPendingRequests();
+
+    pendingRequestsRef.current = setInterval(fetchPendingRequests, PENDING_REQUESTS_POLL_INTERVAL);
 
     return () => {
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       if (pendingRequestsRef.current) clearInterval(pendingRequestsRef.current);
-      document.removeEventListener("visibilitychange", handleVisibility);
-      stopLocationSharing();
-      updateOnlineStatus(false).catch(() => {});
     };
-  }, [stopLocationSharing]);
+  }, []);
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
   const checkSubscription = useCallback(async () => {
     try {
       const backendSubscribed = await checkBackendSubscription();
-      console.log("[Dashboard] Backend subscription:", backendSubscribed);
 
       setNotificationsEnabled(backendSubscribed);
       setCheckingSubscription(false);
@@ -278,14 +191,6 @@ function Dashboard() {
     const intervalId = setInterval(checkSubscription, 30000);
     return () => clearInterval(intervalId);
   }, [checkSubscription]);
-
-  useEffect(() => {
-    if (!checkingSubscription && !notificationsEnabled) {
-      console.log("[Dashboard] Notifications button visible - backend says not subscribed");
-    } else if (!checkingSubscription && notificationsEnabled) {
-      console.log("[Dashboard] Notifications button hidden - backend says subscribed");
-    }
-  }, [checkingSubscription, notificationsEnabled]);
 
   const handleEnableNotifications = async () => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -366,6 +271,7 @@ function Dashboard() {
                   sharingLocation={sharingLocation}
                   onStartSharing={startLocationSharing}
                   onStopSharing={stopLocationSharing}
+                  batteryLevel={batteryLevel}
               />
             </div>
           </div>

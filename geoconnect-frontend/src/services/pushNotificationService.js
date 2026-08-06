@@ -55,7 +55,7 @@ export async function subscribeUser() {
     );
   } catch (err) {
     console.error("Service worker not ready in subscribeUser:", err);
-    throw new Error("Service worker is not ready. Please reload the page.");
+    throw new Error("Service worker is not ready. Please reload the page.", { cause: err });
   }
 
   const { granted, permission } = await requestNotificationPermission();
@@ -103,7 +103,7 @@ export async function unsubscribeUser() {
     );
   } catch (err) {
     console.error("Service worker not ready in unsubscribeUser:", err);
-    throw new Error("Service worker is not ready. Please reload the page.");
+    throw new Error("Service worker is not ready. Please reload the page.", { cause: err });
   }
 
   const subscription = await registration.pushManager.getSubscription();
@@ -118,62 +118,41 @@ export async function unsubscribeUser() {
 }
 
 export async function getSubscriptionStatus() {
-  console.log("[pushNotificationService] Checking subscription status...");
-  
   if (!("serviceWorker" in navigator)) {
-    console.log("[pushNotificationService] No serviceWorker support in navigator");
     return false;
   }
 
-  console.log("[pushNotificationService] Checking serviceWorker registrations...");
   let registration;
-  
+
   try {
-    const reg = await navigator.serviceWorker.getRegistration();
-    console.log("[pushNotificationService] getRegistration result:", reg ? "found" : "null");
-    
-    if (reg) {
-      console.log("[pushNotificationService] Registration state:", {
-        installing: !!reg.installing,
-        waiting: !!reg.waiting,
-        active: !!reg.active,
-        scope: reg.scope,
-      });
-    }
-    
+    await navigator.serviceWorker.getRegistration();
+
     registration = await withTimeout(
       navigator.serviceWorker.ready,
       10000,
       "Service worker not ready"
     );
-    console.log("[pushNotificationService] Service worker ready, scope:", registration.scope);
   } catch (err) {
     console.error("[pushNotificationService] Service worker not ready:", err);
-    
+
     if (!registration) {
       try {
-        console.log("[pushNotificationService] Attempting manual registration...");
         registration = await navigator.serviceWorker.register('/sw.js', {
           scope: '/',
         });
-        console.log("[pushNotificationService] Manual registration successful, scope:", registration.scope);
-        
+
         registration.addEventListener('updatefound', () => {
-          console.log("[pushNotificationService] New service worker installing...");
           const newWorker = registration.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
-              console.log("[pushNotificationService] Service worker state:", newWorker.state);
             });
           }
         });
-        
+
         await new Promise((resolve) => {
           if (registration.active) {
-            console.log("[pushNotificationService] Service worker already active");
             resolve();
           } else if (registration.installing) {
-            console.log("[pushNotificationService] Waiting for installing to activate...");
             registration.installing.addEventListener('statechange', function handler() {
               if (registration.installing?.state === 'activated') {
                 registration.installing.removeEventListener('statechange', handler);
@@ -181,7 +160,6 @@ export async function getSubscriptionStatus() {
               }
             });
           } else if (registration.waiting) {
-            console.log("[pushNotificationService] Service worker waiting, requesting skipWaiting...");
             registration.waiting.postMessage({ type: 'SKIP_WAITING' });
             registration.waiting.addEventListener('statechange', function handler() {
               if (registration.waiting?.state === 'activated') {
@@ -191,9 +169,8 @@ export async function getSubscriptionStatus() {
             });
           }
         });
-        
+
         registration = await navigator.serviceWorker.ready;
-        console.log("[pushNotificationService] Service worker ready after manual registration");
       } catch (manualErr) {
         console.error("[pushNotificationService] Manual registration failed:", manualErr);
         return false;
@@ -203,7 +180,6 @@ export async function getSubscriptionStatus() {
 
   try {
     const subscription = await registration.pushManager.getSubscription();
-    console.log("[pushNotificationService] Browser subscription:", subscription ? "exists" : "none");
     return !!subscription;
   } catch (err) {
     console.error("[pushNotificationService] Failed to get subscription:", err);
@@ -214,7 +190,6 @@ export async function getSubscriptionStatus() {
 export async function checkBackendSubscription() {
   try {
     const response = await api.get("notifications/subscribe/");
-    console.log("[pushNotificationService] Backend subscription status:", response.data);
     return response.data.subscribed === true;
   } catch (err) {
     console.error("[pushNotificationService] Failed to check backend subscription:", err);

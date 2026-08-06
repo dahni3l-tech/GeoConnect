@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getFriendRequests,
@@ -12,18 +12,21 @@ function FriendRequests() {
   const [requests, setRequests] = useState([]);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadRequests();
-  }, []);
-
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
       const data = await getFriendRequests();
       setRequests(data);
     } catch (err) {
-      console.log(err);
+      console.error("Failed to load friend requests:", err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadRequests();
+    const interval = setInterval(loadRequests, 15000);
+    return () => clearInterval(interval);
+  }, [loadRequests]);
 
   const accept = async (id) => {
     await acceptFriendRequest(id);

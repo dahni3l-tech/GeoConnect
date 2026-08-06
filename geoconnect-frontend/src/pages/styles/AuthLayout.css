@@ -4,6 +4,7 @@
 :root {
     /* Primary */
     --primary-500: #254BF5;
+    --primary-300: #8A9BFF;
     --primary-600: #1e3dc4;
     --primary-700: #172f98;
 
@@ -125,6 +126,45 @@ body {
     margin-top: 1rem;
 }
 
+/* Branding block: GeoConnect heading + tagline + slogan */
+.auth-branding {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.auth-branding h2 {
+    font-size: 2.75rem;
+    font-weight: 900;
+    color: var(--white);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.auth-branding .auth-tagline {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--gray-200);
+    line-height: 1.4;
+    margin: 0;
+    text-align: center;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.auth-branding .auth-slogan {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--primary-300);
+    line-height: 1.4;
+    margin: 0;
+    text-align: center;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
 /* Right: form panel */
 .auth-form-panel {
     flex: 1;
@@ -186,11 +226,69 @@ body {
 .auth-link a:hover { color: var(--primary-700); }
 .auth-link a:hover::after { width: 100%; }
 
-/* ── Mobile ── */
+/* ── Mobile (phones): stacked layout, video stays visible ── */
 @media (max-width: 768px) {
-    .auth-visual { display: none; }
-    .auth-form-panel { padding: 1rem; }
-    .auth-card { max-width: 100%; border-radius: 1.25rem; }
+    html,
+    body,
+    #root { height: auto; min-height: 100vh; }
+
+    .auth-page {
+        flex-direction: column;
+        min-height: 100vh;
+        width: 100vw;
+        overflow-x: hidden;
+        background: linear-gradient(135deg, var(--surface-dark), var(--surface-darker));
+    }
+
+    .auth-visual {
+        display: block;
+        flex: none;
+        width: 100vw;
+        height: 100vh;
+        min-height: 50vh;
+        max-height: 65vh;
+        margin: 0 auto;
+    }
+
+    .auth-visual video {
+        opacity: 0.7;
+    }
+
+    .auth-visual-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 1.5rem;
+        max-width: 100%;
+        background: linear-gradient(to top, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.4) 60%, transparent 100%);
+    }
+
+    .auth-branding h2 { font-size: 2.25rem; }
+    .auth-branding .auth-tagline { font-size: 0.95rem; }
+    .auth-branding .auth-slogan { font-size: 0.85rem; }
+
+    .auth-form-panel {
+        flex: none;
+        width: 100%;
+        padding: 1.25rem 1rem;
+        background: transparent;
+    }
+
+    .auth-card {
+        max-width: 100%;
+        width: 100%;
+        margin: 0 auto;
+        padding: 1.75rem 1.5rem;
+        border-radius: 1.25rem;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    }
+
+    .auth-link { margin-top: 1.25rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

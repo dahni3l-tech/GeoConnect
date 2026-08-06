@@ -4,7 +4,7 @@ const TRANSIENT_STATUS_CODES = new Set([408, 419, 425, 429, 500, 502, 503, 504])
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 500;
 
-async function withRetry(fn) {
+async function withRetry(fn, label) {
   let lastError;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -14,6 +14,7 @@ async function withRetry(fn) {
       const status = error.response?.status;
       if (status && TRANSIENT_STATUS_CODES.has(status) && attempt < MAX_RETRIES) {
         const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+        if (import.meta.env.DEV) console.debug(`[${label}] Retry attempt ${attempt + 1} after ${delay}ms`);
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }

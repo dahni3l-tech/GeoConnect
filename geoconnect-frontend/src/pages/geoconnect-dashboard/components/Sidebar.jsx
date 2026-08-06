@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../../context/AuthContext";
 import {
   RiDashboardLine,
   RiSearchLine,
@@ -28,12 +29,12 @@ const menuItems = [
 function Sidebar({ mobileOpen, toggleMobile, user }) {
   
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
-const handleLogout = () => {
-  localStorage.removeItem("access");
-  localStorage.removeItem("refresh");
-  navigate("/login");
-};
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <>

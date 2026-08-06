@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { respondToLocationRequest } from "../services/pushNotificationService";
 import { updateLocation } from "../services/locationService";
+import { useGlobalIntervals } from "../context/AuthContext";
 import "./styles/LocationRequest.css";
 
 function LocationRequest() {
@@ -9,6 +10,7 @@ function LocationRequest() {
   const navigate = useNavigate();
   const requestId = searchParams.get("requestId");
   const senderUsername = searchParams.get("senderUsername") || "Someone";
+  const { startLocationSharing } = useGlobalIntervals();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -58,11 +60,12 @@ function LocationRequest() {
     try {
       await getLocationAndShare();
       await respondToLocationRequest(requestId, "accepted");
+      startLocationSharing();
       setStatus("accepted");
       setTimeout(() => {
         navigate("/dashboard");
       }, 2000);
-    } catch (err) {
+    } catch {
       setError("Failed to share location. Please try again.");
       setLoading(false);
     }
@@ -78,7 +81,7 @@ function LocationRequest() {
       setTimeout(() => {
         navigate("/dashboard");
       }, 2000);
-    } catch (err) {
+    } catch {
       setError("Failed to respond. Please try again.");
       setLoading(false);
     }

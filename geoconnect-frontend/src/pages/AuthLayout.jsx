@@ -8,13 +8,16 @@ function AuthLayout({ children, title, subtitle, linkText, linkTo, linkLabel }) 
     return (
         <div className="auth-page">
             {/* Left side — Video showcase */}
-            <div className="auth-visual">   
+            <div className="auth-visual">
                 <video autoPlay loop muted playsInline>
                     <source src={bgVideo} type="video/mp4" />
                 </video>
                 <div className="auth-visual-overlay">
-                    <h2>{title}</h2>
-                    <p>{subtitle}</p>
+                    <div className="auth-branding">
+                        <h2>{title}</h2>
+                        <p className="auth-tagline">Real-Time Family Safety Platform</p>
+                        <p className="auth-slogan">Stay Connected. Stay Safe.</p>
+                    </div>
                 </div>
             </div>
 

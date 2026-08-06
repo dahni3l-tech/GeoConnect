@@ -16,6 +16,7 @@ from django.utils.http import (
 from django.utils.encoding import force_bytes
 from django.utils.encoding import force_str
 from django.db import IntegrityError
+from django.db import transaction
 from django.db.models import Q
 from .models import (
     User,
@@ -106,12 +107,7 @@ class RegisterView(generics.CreateAPIView):
 
 
 class LoginView(APIView):
-    # print("===== LOGIN HIT =====")
-    # i used to check if it was working
-    
     def post(self, request):
-        print(request.data)
-
         serializer = LoginSerializer(data=request.data)
 
         if serializer.is_valid():
@@ -215,9 +211,6 @@ class ProfileView(APIView):
         return Response(serializer.data)
 
     def patch(self, request):
-        print("REQUEST DATA:", request.data)
-        print("FILES:", request.FILES)
-
         serializer = ProfileUpdateSerializer(
             request.user,
             data=request.data,
@@ -548,12 +541,14 @@ class OnlineStatusView(APIView):
     def post(self, request):
         is_online = request.data.get("is_online", True)
         was_offline = not request.user.is_online
+        old_last_seen = request.user.last_seen
         request.user.is_online = bool(is_online)
         request.user.last_seen = timezone.now()
         request.user.save(update_fields=["is_online", "last_seen"])
 
         if is_online and was_offline:
-            self._notify_friends_online(request.user)
+            if not old_last_seen or (timezone.now() - old_last_seen).total_seconds() > 60:
+                self._notify_friends_online(request.user)
 
         return Response({
             "is_online": request.user.is_online,
@@ -883,6 +878,18 @@ class FamilyInvitationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        accepted = FamilyInvitation.objects.filter(
+            guardian=request.user,
+            child=child,
+            status="accepted",
+        ).first()
+
+        if accepted:
+            return Response(
+                {"error": "You have already been connected with this user."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         blocked_by_sender = FamilyInvitation.objects.filter(
             guardian=request.user,
             child=child,
@@ -994,15 +1001,11 @@ class RespondFamilyInvitationView(APIView):
     def post(self, request, pk):
         logger.info("RespondFamilyInvitationView POST: user=%s pk=%s", request.user.username, pk)
         try:
-            invitation = FamilyInvitation.objects.get(
-                id=pk,
-                child=request.user,
-                status="pending",
-            )
-        except FamilyInvitation.DoesNotExist:
+            pk = int(pk)
+        except (TypeError, ValueError):
             return Response(
-                {"error": "Invitation not found."},
-                status=status.HTTP_404_NOT_FOUND,
+                {"error": "Invalid invitation ID."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         action = request.data.get("action")
@@ -1015,68 +1018,87 @@ class RespondFamilyInvitationView(APIView):
             )
 
         try:
-            if action == "accept":
-                invitation.status = "accepted"
-                invitation.save()
-
-                FamilyMemberLink.objects.get_or_create(
-                    guardian=invitation.guardian,
+            with transaction.atomic():
+                invitation = FamilyInvitation.objects.select_for_update().get(
+                    id=pk,
                     child=request.user,
-                    defaults={
-                        "relation": invitation.relation,
-                        "nickname": invitation.nickname,
-                    },
+                    status="pending",
                 )
 
-                LocationPermission.objects.get_or_create(
-                    child=request.user,
-                    guardian=invitation.guardian,
-                    defaults={"permission_type": permission_type},
-                )
+                if action == "accept":
+                    invitation.status = "accepted"
+                    invitation.responded_at = timezone.now()
+                    invitation.save(update_fields=["status", "responded_at"])
 
-                ActivityLog.objects.create(
-                    user=request.user,
-                    activity_type="family_joined",
-                    description=f"{request.user.username} accepted family invitation from {invitation.guardian.username}",
-                    metadata={"guardian_id": invitation.guardian.id},
-                )
+                    FamilyMemberLink.objects.get_or_create(
+                        guardian=invitation.guardian,
+                        child=request.user,
+                        defaults={
+                            "relation": invitation.relation,
+                            "nickname": invitation.nickname,
+                        },
+                    )
 
-                Notification.objects.create(
-                    recipient=invitation.guardian,
-                    notification_type="family_request_accepted",
-                    title="Family Request Accepted",
-                    message=f"{request.user.username} accepted your family invitation.",
-                    data={
-                        "type": "family_request_accepted",
-                        "childId": request.user.id,
-                        "childUsername": request.user.username,
-                    },
-                )
+                    LocationPermission.objects.get_or_create(
+                        child=request.user,
+                        guardian=invitation.guardian,
+                        defaults={"permission_type": permission_type},
+                    )
 
-                subscriptions = PushSubscription.objects.filter(user=invitation.guardian)
-                broadcast_push_notifications(
-                    subscriptions,
-                    title="Family Request Accepted",
-                    body=f"{request.user.username} accepted your family invitation.",
-                    data={
-                        "type": "family_request_accepted",
-                        "childId": request.user.id,
-                        "childUsername": request.user.username,
-                    },
-                )
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        activity_type="family_joined",
+                        description=f"{request.user.username} accepted family invitation from {invitation.guardian.username}",
+                        metadata={"guardian_id": invitation.guardian.id},
+                    )
 
-            elif action == "decline":
-                invitation.status = "declined"
-                invitation.responded_at = timezone.now()
-                invitation.save()
+                    Notification.objects.create(
+                        recipient=invitation.guardian,
+                        notification_type="family_request_accepted",
+                        title="Family Request Accepted",
+                        message=f"{request.user.username} accepted your family invitation.",
+                        data={
+                            "type": "family_request_accepted",
+                            "childId": request.user.id,
+                            "childUsername": request.user.username,
+                        },
+                    )
 
-            elif action == "block":
-                invitation.status = "blocked"
-                invitation.responded_at = timezone.now()
-                invitation.save()
+                    subscriptions = PushSubscription.objects.filter(user=invitation.guardian)
+                    broadcast_push_notifications(
+                        subscriptions,
+                        title="Family Request Accepted",
+                        body=f"{request.user.username} accepted your family invitation.",
+                        data={
+                            "type": "family_request_accepted",
+                            "childId": request.user.id,
+                            "childUsername": request.user.username,
+                        },
+                    )
+
+                elif action == "decline":
+                    invitation.status = "declined"
+                    invitation.responded_at = timezone.now()
+                    invitation.save(update_fields=["status", "responded_at"])
+
+                elif action == "block":
+                    invitation.status = "blocked"
+                    invitation.responded_at = timezone.now()
+                    invitation.save(update_fields=["status", "responded_at"])
 
             logger.info("RespondFamilyInvitationView POST: action=%s status=%s", action, invitation.status)
             return Response({"status": invitation.status})
+        except FamilyInvitation.DoesNotExist:
+            return Response(
+                {"error": "Invitation not found or already responded."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except IntegrityError as e:
+            logger.warning("RespondFamilyInvitationView POST: integrity error: %s", e)
+            return Response(
+                {"error": "Invitation has already been responded to."},
+                status=status.HTTP_409_CONFLICT,
+            )
         except Exception as e:
             logger.exception("RespondFamilyInvitationView POST: error")
             return Response(

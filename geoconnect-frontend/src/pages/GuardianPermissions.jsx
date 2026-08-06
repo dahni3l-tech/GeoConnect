@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   RiShieldLine,
@@ -53,12 +53,9 @@ function GuardianPermissions() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [selectedPermission, setSelectedPermission] = useState("always");
   const [submitting, setSubmitting] = useState(false);
+  const [respondingInvitations, setRespondingInvitations] = useState({});
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [members, perms, invites, reqs] = await Promise.all([
         getFamilyMembers().catch(() => []),
@@ -75,7 +72,12 @@ function GuardianPermissions() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData();
+  }, [fetchData]);
 
   const handleSendPermissionRequest = async () => {
     if (!selectedGuardian) return;
@@ -118,12 +120,29 @@ function GuardianPermissions() {
   };
 
   const handleRespondInvitation = async (invitationId, action) => {
+    if (respondingInvitations[invitationId]) return;
+    setRespondingInvitations((prev) => ({ ...prev, [invitationId]: true }));
     try {
       const permType = action === "accept" ? "always" : "always";
       await respondToFamilyInvitation(invitationId, action, permType);
-      await fetchData();
+      setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+      if (action === "accept") {
+        alert("Invitation accepted! You're now connected.");
+      } else if (action === "decline") {
+        alert("Invitation declined.");
+      } else {
+        alert("Invitation blocked.");
+      }
     } catch (error) {
       console.error("Failed to respond to invitation:", error);
+      const message = error.response?.data?.error || "Failed to respond to invitation.";
+      alert(message);
+    } finally {
+      setRespondingInvitations((prev) => {
+        const next = { ...prev };
+        delete next[invitationId];
+        return next;
+      });
     }
   };
 
@@ -175,17 +194,29 @@ function GuardianPermissions() {
                       <p>Wants to add you as {inv.relation}</p>
                     </div>
                   </div>
-                  <div className="invitation-actions">
-                    <button className="btn-accept" onClick={() => handleRespondInvitation(inv.id, "accept")}>
-                      <RiCheckLine size={16} /> Accept
-                    </button>
-                    <button className="btn-decline" onClick={() => handleRespondInvitation(inv.id, "decline")}>
-                      <RiCloseLine size={16} /> Decline
-                    </button>
-                    <button className="btn-block" onClick={() => handleRespondInvitation(inv.id, "block")}>
-                      <RiAlertLine size={16} /> Block
-                    </button>
-                  </div>
+                   <div className="invitation-actions">
+                     <button
+                       className="btn-accept"
+                       onClick={() => handleRespondInvitation(inv.id, "accept")}
+                       disabled={respondingInvitations[inv.id]}
+                     >
+                       {respondingInvitations[inv.id] ? "..." : <RiCheckLine size={16} />} Accept
+                     </button>
+                     <button
+                       className="btn-decline"
+                       onClick={() => handleRespondInvitation(inv.id, "decline")}
+                       disabled={respondingInvitations[inv.id]}
+                     >
+                       {respondingInvitations[inv.id] ? "..." : <RiCloseLine size={16} />} Decline
+                     </button>
+                     <button
+                       className="btn-block"
+                       onClick={() => handleRespondInvitation(inv.id, "block")}
+                       disabled={respondingInvitations[inv.id]}
+                     >
+                       {respondingInvitations[inv.id] ? "..." : <RiAlertLine size={16} />} Block
+                     </button>
+                   </div>
                 </div>
               ))}
             </div>

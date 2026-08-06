@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   RiShieldLine,
@@ -133,11 +133,7 @@ function GuardianDashboard() {
     return null;
   };
 
-  useEffect(() => {
-    fetchAllData();
-  }, []);
-
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     setFetchError(null);
     const errors = [];
     try {
@@ -166,7 +162,14 @@ function GuardianDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAllData();
+    const interval = setInterval(fetchAllData, 15000);
+    return () => clearInterval(interval);
+  }, [fetchAllData]);
 
   const handleSearchUsers = async (e) => {
     e.preventDefault();
@@ -191,20 +194,21 @@ function GuardianDashboard() {
     }
   };
 
+  const [respondingInvitations, setRespondingInvitations] = useState({});
+
   const handleSendInvitation = async (userId, role) => {
     setInvitingUsers((prev) => ({ ...prev, [userId]: true }));
     try {
-      await sendFamilyInvitation({
+      const response = await sendFamilyInvitation({
         child_identifier: userId,
         relation: role,
       });
-      setSearchResults((prev) => prev.filter((u) => u.id !== userId));
       setInvitingUsers((prev) => {
         const next = { ...prev };
         delete next[userId];
         return next;
       });
-      fetchAllData();
+      alert(`Invitation sent successfully! ${response?.child_username || "Your invitee"} will be notified and can accept to join your Family Safety Hub.`);
     } catch (error) {
       console.error("Failed to send invitation:", error);
       const message = error.response?.data?.error || "Failed to send invitation.";
@@ -218,13 +222,28 @@ function GuardianDashboard() {
   };
 
   const handleRespondInvitation = async (invitationId, action) => {
+    if (respondingInvitations[invitationId]) return;
+    setRespondingInvitations((prev) => ({ ...prev, [invitationId]: true }));
     try {
       await respondToFamilyInvitation(invitationId, action, "always");
-      fetchAllData();
+      setInvitations((prev) => prev.filter((inv) => inv.id !== invitationId));
+      if (action === "accept") {
+        alert("Invitation accepted! You're now connected.");
+      } else if (action === "decline") {
+        alert("Invitation declined.");
+      } else {
+        alert("Invitation blocked.");
+      }
     } catch (error) {
       console.error("Failed to respond to invitation:", error);
       const message = error.response?.data?.error || "Failed to respond to invitation.";
       alert(message);
+    } finally {
+      setRespondingInvitations((prev) => {
+        const next = { ...prev };
+        delete next[invitationId];
+        return next;
+      });
     }
   };
 
@@ -380,21 +399,33 @@ function GuardianDashboard() {
           <div className="guardian-invitation-list">
             {invitations.map((inv) => (
               <div key={inv.id} className="guardian-invitation-card">
-                <div className="invitation-info">
-                  <h4>{inv.guardian_username} wants to add you to their Family Safety Hub</h4>
-                  <span>As {inv.relation}</span>
-                </div>
-                <div className="invitation-actions">
-                  <button className="btn-accept" onClick={() => handleRespondInvitation(inv.id, "accept")}>
-                    <RiCheckLine size={16} /> Accept
-                  </button>
-                  <button className="btn-decline" onClick={() => handleRespondInvitation(inv.id, "decline")}>
-                    <RiCloseLine size={16} /> Decline
-                  </button>
-                  <button className="btn-block" onClick={() => handleRespondInvitation(inv.id, "block")}>
-                    <RiUserForbidLine size={16} /> Block
-                  </button>
-                </div>
+              <div className="invitation-info">
+                   <h4>{inv.guardian_username} wants to add you to their Family Safety Hub</h4>
+                   <span>As {inv.relation}</span>
+                 </div>
+                 <div className="invitation-actions">
+                   <button
+                     className="btn-accept"
+                     onClick={() => handleRespondInvitation(inv.id, "accept")}
+                     disabled={respondingInvitations[inv.id]}
+                   >
+                     {respondingInvitations[inv.id] ? "..." : <RiCheckLine size={16} />} Accept
+                   </button>
+                   <button
+                     className="btn-decline"
+                     onClick={() => handleRespondInvitation(inv.id, "decline")}
+                     disabled={respondingInvitations[inv.id]}
+                   >
+                     {respondingInvitations[inv.id] ? "..." : <RiCloseLine size={16} />} Decline
+                   </button>
+                   <button
+                     className="btn-block"
+                     onClick={() => handleRespondInvitation(inv.id, "block")}
+                     disabled={respondingInvitations[inv.id]}
+                   >
+                     {respondingInvitations[inv.id] ? "..." : <RiUserForbidLine size={16} />} Block
+                   </button>
+                 </div>
               </div>
             ))}
           </div>

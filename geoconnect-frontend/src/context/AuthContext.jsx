@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { isTokenExpired, getTimeUntilExpiry } from "../utils/tokenUtils";
+import { updateOnlineStatus } from "../services/pushNotificationService";
+import { updateLocation } from "../services/locationService";
 
 /* eslint-disable react-refresh/only-export-components */
 
@@ -9,12 +11,22 @@ const ACCESS_KEY = "access";
 const REFRESH_KEY = "refresh";
 const USER_KEY = "geoconnect_user";
 
+const HEARTBEAT_INTERVAL = 30000;
+const LOCATION_UPDATE_INTERVAL = 30000;
+const HEARTBEAT_DEBOUNCE_MS = 30000;
+let heartbeatIntervalRef = null;
+let locationIntervalRef = null;
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [sharingLocation, setSharingLocation] = useState(false);
+  const [batteryLevel, setBatteryLevel] = useState(null);
 
   const proactiveRefreshTimerRef = useRef(null);
+  const lastHeartbeatRef = useRef(0);
+  const lastLocationRef = useRef(null);
 
   const clearAuth = useCallback(() => {
     if (proactiveRefreshTimerRef.current) {
@@ -176,12 +188,108 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  const startLocationSharing = useCallback(() => {
+    if (locationIntervalRef) return;
+    const update = async () => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const newLat = position.coords.latitude;
+            const newLng = position.coords.longitude;
+            if (
+              lastLocationRef.current &&
+              Math.abs(lastLocationRef.current.lat - newLat) < 0.00005 &&
+              Math.abs(lastLocationRef.current.lng - newLng) < 0.00005
+            ) {
+              return;
+            }
+            await updateLocation(newLat, newLng);
+            lastLocationRef.current = { lat: newLat, lng: newLng };
+            window.dispatchEvent(
+              new CustomEvent("location:updated", { detail: { latitude: newLat, longitude: newLng } })
+            );
+          } catch (error) {
+            console.error("Failed to update location:", error);
+          }
+        },
+        (error) => {
+          console.error("Unable to get your location:", error);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    };
+    update();
+    locationIntervalRef = setInterval(update, LOCATION_UPDATE_INTERVAL);
+    setSharingLocation(true);
+  }, []);
+
+  const stopLocationSharing = useCallback(() => {
+    if (locationIntervalRef) {
+      clearInterval(locationIntervalRef);
+      locationIntervalRef = null;
+    }
+    setSharingLocation(false);
+    updateOnlineStatus(false).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const sendHeartbeat = () => {
+      const now = Date.now();
+      if (now - lastHeartbeatRef.current < HEARTBEAT_DEBOUNCE_MS) return;
+      lastHeartbeatRef.current = now;
+      updateOnlineStatus(true).catch(() => {});
+    };
+
+    sendHeartbeat();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    startLocationSharing();
+
+    heartbeatIntervalRef = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") sendHeartbeat();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    const handleBeforeUnload = () => {
+      updateOnlineStatus(false).catch(() => {});
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    if (!navigator.getBattery) return;
+    let battery;
+    navigator.getBattery().then((b) => {
+      battery = b;
+      setBatteryLevel(Math.round(battery.level * 100));
+      const onLevelChange = () => setBatteryLevel(Math.round(battery.level * 100));
+      battery.addEventListener("levelchange", onLevelChange);
+      return () => battery.removeEventListener("levelchange", onLevelChange);
+    }).catch(() => {});
+
+    return () => {
+      if (heartbeatIntervalRef) {
+        clearInterval(heartbeatIntervalRef);
+        heartbeatIntervalRef = null;
+      }
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      updateOnlineStatus(false).catch(() => {});
+    };
+  }, [isAuthenticated, startLocationSharing]);
+
   const value = {
     user,
     isAuthenticated,
     isLoading,
     login,
     logout,
+    sharingLocation,
+    startLocationSharing,
+    stopLocationSharing,
+    batteryLevel,
   };
 
   return (
@@ -197,5 +305,18 @@ export function useAuth() {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+}
+
+export function useGlobalIntervals() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useGlobalIntervals must be used within an AuthProvider");
+  }
+  return {
+    sharingLocation: context.sharingLocation,
+    startLocationSharing: context.startLocationSharing,
+    stopLocationSharing: context.stopLocationSharing,
+    batteryLevel: context.batteryLevel,
+  };
 }
 

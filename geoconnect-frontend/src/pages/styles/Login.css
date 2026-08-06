@@ -122,6 +122,11 @@
     .login-form button { padding: 0.85rem 1.5rem; font-size: 0.95rem; }
 }
 
+@media (max-width: 360px) {
+    .auth-card { padding: 1.5rem 1.25rem; }
+    .login-form button { padding: 0.8rem 1.5rem; font-size: 0.9rem; }
+}
+
 @media (min-width: 768px) {
     .login-form { gap: 1rem; }
 }

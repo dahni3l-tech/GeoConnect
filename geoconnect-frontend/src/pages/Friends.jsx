@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFriends } from "../services/friendService";
 import { requestLocation } from "../services/locationRequestService";
@@ -10,20 +10,21 @@ function Friends() {
   const [loadingRequestId, setLoadingRequestId] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadFriends();
-    const interval = setInterval(loadFriends, 15000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadFriends = async () => {
+  const loadFriends = useCallback(async () => {
     try {
       const data = await getFriends();
       setFriends(data);
     } catch (error) {
-      console.log(error);
+      console.error("Failed to load friends:", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadFriends();
+    const interval = setInterval(loadFriends, 15000);
+    return () => clearInterval(interval);
+  }, [loadFriends]);
 
   const handleRequestLocation = async (friendId) => {
     setLoadingRequestId(friendId);
