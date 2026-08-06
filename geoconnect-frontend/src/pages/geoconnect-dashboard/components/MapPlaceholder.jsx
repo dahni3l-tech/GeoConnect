@@ -16,15 +16,17 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+
 const createAvatarIcon = (image, username) => {
+  const src = image;
   return L.divIcon({
     className: "custom-avatar-marker",
     html: `
       <div class="avatar-marker">
         ${
-          image
-            ? `<img src="${image}" alt="${username}" />`
-            : `<span>${username.charAt(0).toUpperCase()}</span>`
+          src
+            ? `<img src="${src}" alt="${username}" />`
+            : `<span>${username?.charAt(0).toUpperCase() || "?"}</span>`
         }
       </div>
     `,
@@ -104,3 +106,4 @@ function MapPlaceholder({ user, friends, className }) {
 }
 
 export default MapPlaceholder;
+

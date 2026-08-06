@@ -371,7 +371,7 @@ function Settings() {
 
       <div className="settings-main">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-          <button className="settings-back-btn" onClick={() => navigate(-1)}>
+          <button className="settings-back-btn" onClick={() => navigate('/dashboard')}>
             <RiArrowLeftLine size={18} />
             Back
           </button>

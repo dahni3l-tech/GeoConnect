@@ -4,6 +4,7 @@ import { getFriends } from "../services/friendService";
 import { requestLocation } from "../services/locationRequestService";
 import "./styles/Friends.css";
 
+
 function Friends() {
   const [friends, setFriends] = useState([]);
   const [loadingRequestId, setLoadingRequestId] = useState(null);
@@ -60,7 +61,7 @@ function Friends() {
 
   return (
     <div className="friends-page">
-      <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
+      <button className="back-btn" onClick={() => navigate('/dashboard')}>← Back</button>
       <div className="friends-header">
         <h1>Friends</h1>
         <p className="friends-subtitle">

@@ -89,7 +89,11 @@ export function AuthProvider({ children }) {
         return;
       }
 
+      setUser(userData ? JSON.parse(userData) : null);
+      setIsAuthenticated(true);
       setIsLoading(false);
+      const event = new CustomEvent("auth:token-refresh-needed");
+      window.dispatchEvent(event);
       return;
     }
 

@@ -54,7 +54,7 @@ function FriendDetails() {
 
       <button
         className="back-btn"
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/friends')}
       >
         ← Back
       </button>

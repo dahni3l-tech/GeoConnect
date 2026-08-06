@@ -1720,6 +1720,54 @@
   }
 }
 
+/* Error Banner */
+.guardian-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #dc2626;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.guardian-error-banner span {
+  flex: 1;
+}
+
+.guardian-retry-btn,
+.guardian-dismiss-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.guardian-retry-btn {
+  background: #dc2626;
+  color: white;
+}
+
+.guardian-retry-btn:hover {
+  background: #b91c1c;
+}
+
+.guardian-dismiss-btn {
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.guardian-dismiss-btn:hover {
+  background: #fef2f2;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .guardian-stat-card,
   .guardian-action-btn,

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { login as authLogin } from "../services/authService";
 import AuthLayout from "./AuthLayout"; 
 import "./styles/AuthLayout.css"; 
 import "./styles/Login.css"; 
@@ -21,7 +22,8 @@ function Login() {
         setIsLoading(true);
 
         try {
-            await login(form.login, form.password);
+            const response = await authLogin(form.login, form.password);
+            login(response.user, response.tokens);
 
             alert("Login successful!");
             navigate("/dashboard");

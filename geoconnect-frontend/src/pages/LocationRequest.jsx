@@ -100,7 +100,7 @@ function LocationRequest() {
   if (status === "rejected") {
     return (
       <div className="location-request-page">
-        <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
+        <button className="back-btn" onClick={() => navigate('/dashboard')}>← Back</button>
         <div className="location-request-card rejected">
           <div className="rejected-icon">❌</div>
           <h2>Request Rejected</h2>
@@ -112,7 +112,7 @@ function LocationRequest() {
 
   return (
     <div className="location-request-page">
-      <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
+      <button className="back-btn" onClick={() => navigate('/dashboard')}>← Back</button>
       <div className="location-request-card">
         <div className="request-icon">📍</div>
         <h2>Location Request</h2>

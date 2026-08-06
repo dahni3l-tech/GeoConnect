@@ -13,6 +13,7 @@ import { updateProfile, uploadProfilePicture, clearUserCache, setUserCache } fro
 import { useAuth } from "../context/AuthContext";
 import "./styles/ProfilePage.css";
 
+
 function ProfilePage({ user, setUser, onClose }) {
   const { logout } = useAuth();
   const navigate = useNavigate();

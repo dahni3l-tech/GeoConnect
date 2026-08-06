@@ -7,6 +7,7 @@ import {
 } from "../services/friendService";
 import "./styles/AppTheme.css";
 
+
 function FriendRequests() {
   const [requests, setRequests] = useState([]);
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ function FriendRequests() {
 
   return (
     <div className="friends-page">
-      <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
+      <button className="back-btn" onClick={() => navigate('/friends')}>← Back</button>
       <div className="friends-header">
         <h1>Friend Requests</h1>
         <p className="friends-subtitle">Review and manage your pending connections.</p>

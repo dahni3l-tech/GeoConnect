@@ -184,6 +184,10 @@
   background: linear-gradient(135deg, #64748B, #94A3B8) !important;
 }
 
+.feature-icon.indigo {
+  background: linear-gradient(135deg, #4F46E5, #6366F1) !important;
+}
+
 .feature-title {
   font-size: 1rem;
   font-weight: 700;

@@ -1,7 +1,4 @@
 
-
-
-
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -55,7 +52,12 @@ from .serializers import (
     ActivityLogSerializer,
     RouteHistorySerializer,
     PermissionRequestSerializer,
+    UpdateLocationSerializer,
+    FriendRequestListSerializer,
+    ProfileUpdateSerializer,
+    FriendSerializer,
 )
+
 from rest_framework.parsers import MultiPartParser, FormParser
 import requests
 

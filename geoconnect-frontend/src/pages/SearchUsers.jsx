@@ -6,6 +6,7 @@ import {
 } from "../services/friendService";
 import "./styles/SearchUsers.css";
 
+
 function SearchUsers() {
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState([]);
@@ -54,7 +55,7 @@ function SearchUsers() {
 
   return (
     <div className="search-page">
-      <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
+      <button className="back-btn" onClick={() => navigate('/dashboard')}>← Back</button>
       <div className="search-header">
         <h2 className="page-title">Search Users</h2>
         <p className="page-subtitle">

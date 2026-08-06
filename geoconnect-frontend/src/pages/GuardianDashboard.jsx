@@ -60,6 +60,7 @@ import {
 } from "../services/pushNotificationService";
 import "./styles/GuardianDashboard.css";
 
+
 const PERMISSION_LABELS = {
   always: { label: "Live Location Enabled", color: "green", icon: RiEyeLine },
   school_hours: { label: "School Hours Only", color: "blue", icon: RiSchoolLine },
@@ -88,6 +89,8 @@ function GuardianDashboard() {
   const [routeHistory, setRouteHistory] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const [fetchError, setFetchError] = useState(null);
 
   const [safePlaceForm, setSafePlaceForm] = useState({ name: "", address: "", latitude: "", longitude: "", radius: 500 });
   const [emergencyForm, setEmergencyForm] = useState({ name: "", phone: "", contact_type: "Medical" });
@@ -135,14 +138,16 @@ function GuardianDashboard() {
   }, []);
 
   const fetchAllData = async () => {
+    setFetchError(null);
+    const errors = [];
     try {
       const [dashboard, mapData, invites, perms, sos, logs] = await Promise.all([
-        getGuardianDashboard().catch(() => null),
-        getFamilyMapData().catch(() => []),
-        getFamilyInvitations().catch(() => []),
-        getLocationPermissions().catch(() => []),
-        getSOSAlerts().catch(() => []),
-        getActivityLog().catch(() => []),
+        getGuardianDashboard().catch(() => { errors.push("dashboard"); return null; }),
+        getFamilyMapData().catch(() => { errors.push("mapData"); return []; }),
+        getFamilyInvitations().catch(() => { errors.push("invitations"); return []; }),
+        getLocationPermissions().catch(() => { errors.push("permissions"); return []; }),
+        getSOSAlerts().catch(() => { errors.push("sosAlerts"); return []; }),
+        getActivityLog().catch(() => { errors.push("activityLog"); return []; }),
       ]);
 
       if (dashboard) setDashboardData(dashboard);
@@ -151,8 +156,13 @@ function GuardianDashboard() {
       setPermissions(perms);
       setSosAlerts(sos);
       setActivityLogs(logs);
+
+      if (errors.length > 0) {
+        setFetchError(`Some data failed to load: ${errors.join(", ")}.`);
+      }
     } catch (error) {
       console.error("Failed to fetch guardian data:", error);
+      setFetchError("Failed to load family safety data. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -261,6 +271,12 @@ function GuardianDashboard() {
     } catch (error) {
       console.error("Failed to resolve SOS:", error);
     }
+  };
+
+  const handleRetryFetch = async () => {
+    setLoading(true);
+    setFetchError(null);
+    await fetchAllData();
   };
 
   const getBatteryIcon = (level) => {

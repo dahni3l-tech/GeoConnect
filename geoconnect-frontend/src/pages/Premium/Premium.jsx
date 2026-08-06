@@ -10,6 +10,7 @@ import {
   RiLockLine,
   RiTeamLine,
   RiWifiOffLine,
+  RiVipCrownFill,
 } from 'react-icons/ri';
 import './PremiumCard.css';
 
@@ -127,7 +128,7 @@ function Premium() {
   const navigate = useNavigate();
   return (
     <div className="premium-page">
-      <button className="back-btn" onClick={() => navigate(-1)}>← Back</button>
+      <button className="back-btn" onClick={() => navigate('/dashboard')}>← Back</button>
 
       <div className="premium-container">
         <motion.div

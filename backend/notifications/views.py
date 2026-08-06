@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from django.db import models
 from .models import PushSubscription, LocationRequest, Notification
 from .serializers import NotificationSerializer
-from accounts.models import FriendRequest, User, User
+from accounts.models import FriendRequest
 from django.conf import settings
 from django.contrib.auth import get_user_model
 import json

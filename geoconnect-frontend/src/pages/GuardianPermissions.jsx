@@ -32,6 +32,7 @@ import {
 } from "../services/guardianService";
 import "./styles/GuardianPermissions.css";
 
+
 const PERMISSION_OPTIONS = [
   { value: "always", label: "Always share live location", desc: "Guardians can see your real-time location anytime", icon: RiEyeLine, color: "green" },
   { value: "school_hours", label: "School hours only", desc: "Share location only during expected school hours (8am - 4pm)", icon: RiSchoolLine, color: "blue" },
@@ -145,7 +146,7 @@ function GuardianPermissions() {
     <div className="permissions-page">
       <div className="permissions-container">
         <header className="permissions-header">
-          <button className="back-btn" onClick={() => navigate(-1)}>
+          <button className="back-btn" onClick={() => navigate('/guardian')}>
             <RiArrowLeftLine size={20} />
           </button>
           <div>
