@@ -16,8 +16,8 @@ function AuthLayout({ children, title, subtitle, linkText, linkTo, linkLabel }) 
                     <div className="auth-branding">
                         <h2>{title}</h2>
                         <p className="auth-subtitle">{subtitle}</p>
-                        <p className="auth-tagline">Real-Time Family Safety Platform</p>
-                        <p className="auth-slogan">Stay Connected. Stay Safe.</p>
+                        <p className="auth-tagline">Because Peace of Mind Matters</p>
+                        <p className="auth-slogan">Stay Close, Even From Afar.</p>
                     </div>
                 </div>
             </div>

@@ -261,10 +261,10 @@ body {
         background: var(--white);
     }
 
-    /* Desktop branding: show the subtitle prop, hide mobile-only tagline/slogan */
-    .auth-branding .auth-subtitle { display: block; }
-    .auth-branding .auth-tagline { display: none; }
-    .auth-branding .auth-slogan { display: none; }
+    /* Desktop branding: show tagline/slogan, hide subtitle prop */
+    .auth-branding .auth-subtitle { display: none; }
+    .auth-branding .auth-tagline { display: block; font-size: 1.25rem; }
+    .auth-branding .auth-slogan { display: block; font-size: 1.1rem; }
 
     .auth-branding h2 {
         font-family: var(--font-sans);
@@ -324,13 +324,13 @@ body {
         pointer-events: none;
     }
 
-    /* Branding positioned in the upper-third of the hero for balance */
+    /* Branding positioned lower in the upper portion of the hero */
     .auth-visual-overlay {
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
-        padding: 5rem 1.5rem 1.5rem;
+        padding: 6.5rem 1.5rem 1.5rem;
         max-width: 100%;
         text-align: center;
         z-index: 3;
@@ -348,10 +348,10 @@ body {
     /* Hide desktop subtitle on mobile */
     .auth-branding .auth-subtitle { display: none; }
 
-    /* Form card floats centered over the video */
+    /* Form card floats centered on mobile, balanced between branding and bottom */
     .auth-form-panel {
         position: absolute;
-        top: 50%;
+        top: 58%;
         left: 0;
         right: 0;
         width: 100%;
@@ -382,7 +382,8 @@ body {
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
     }
 
-    .auth-link { margin-top: 1.25rem; }
+    .auth-link { margin-top: 1.25rem; color: var(--white); }
+    .auth-link a { color: var(--primary-500); }
 }
 
 @media (prefers-reduced-motion: reduce) {

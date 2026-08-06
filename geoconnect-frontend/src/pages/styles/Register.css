@@ -158,11 +158,51 @@
     transition: all var(--transition-smooth);
 }
 
+.guardian-toggle:hover {
+    border-color: var(--primary-500);
+    color: var(--primary-600);
+    background: #EEF1FF;
+}
+
 .guardian-toggle.active {
     background: var(--primary-500);
     color: var(--white);
     border-color: var(--primary-500);
     box-shadow: 0 4px 14px rgba(37, 75, 245, 0.35);
+}
+
+/* Mobile: white text + frosted glass on glassmorphism card */
+@media (max-width: 768px) {
+    .guardian-mode-question { margin: 0.75rem 0; }
+
+    .guardian-toggle-label {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--white);
+    }
+
+    .guardian-toggle {
+        padding: 0.6rem 1.5rem;
+        font-size: 0.9rem;
+        border: 1.5px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.2);
+        color: var(--white);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+
+    .guardian-toggle:hover {
+        border-color: var(--primary-300);
+        color: var(--primary-300);
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .guardian-toggle.active {
+        background: var(--primary-500);
+        color: var(--white);
+        border-color: var(--primary-500);
+        box-shadow: 0 4px 20px rgba(37, 75, 245, 0.5);
+    }
 }
 
 /* ── Guardian Details Form ── */
