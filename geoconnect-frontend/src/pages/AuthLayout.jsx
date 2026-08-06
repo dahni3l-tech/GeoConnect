@@ -15,6 +15,7 @@ function AuthLayout({ children, title, subtitle, linkText, linkTo, linkLabel }) 
                 <div className="auth-visual-overlay">
                     <div className="auth-branding">
                         <h2>{title}</h2>
+                        <p className="auth-subtitle">{subtitle}</p>
                         <p className="auth-tagline">Real-Time Family Safety Platform</p>
                         <p className="auth-slogan">Stay Connected. Stay Safe.</p>
                     </div>
