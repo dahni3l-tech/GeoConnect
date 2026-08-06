@@ -324,13 +324,13 @@ body {
         pointer-events: none;
     }
 
-    /* Branding anchored to top of hero */
+    /* Branding positioned in the upper-third of the hero for balance */
     .auth-visual-overlay {
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
-        padding: 3.5rem 1.5rem 1.5rem;
+        padding: 5rem 1.5rem 1.5rem;
         max-width: 100%;
         text-align: center;
         z-index: 3;
