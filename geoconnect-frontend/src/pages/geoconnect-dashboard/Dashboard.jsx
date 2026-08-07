@@ -178,7 +178,7 @@ function Dashboard() {
         longitude: user?.longitude,
       });
       setShowSOSConfirm(false);
-      alert("SOS alert sent to your guardians!");
+      alert("SOS alert sent to your Friends and guardians!");
     } catch {
       alert("Failed to send SOS alert. Please try again.");
     }
@@ -329,7 +329,7 @@ function Dashboard() {
               onClick={(e) => e.stopPropagation()}
             >
               <h3>Send SOS Alert?</h3>
-              <p>This will immediately notify all your guardians with your current location.</p>
+              <p>This will immediately notify all your friends and guardians with your current location.</p>
               <div className="sos-confirm-actions">
                 <button className="btn-cancel" onClick={() => setShowSOSConfirm(false)}>Cancel</button>
                 <button className="btn-sos-confirm" onClick={handleSOS}>Send SOS</button>

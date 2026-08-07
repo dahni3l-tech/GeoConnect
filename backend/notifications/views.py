@@ -344,6 +344,23 @@ class RequestLocationView(APIView):
             receiver.username,
         )
 
+        # Create in-app notification record for the receiver
+        try:
+            Notification.objects.create(
+                recipient=receiver,
+                notification_type="location_request",
+                title="Location Request",
+                message=f"{request.user.username} is requesting your live location.",
+                data={
+                    "type": "location_request",
+                    "requestId": location_request.id,
+                    "senderId": request.user.id,
+                    "senderUsername": request.user.username,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to create location_request notification")
+
         subscriptions = PushSubscription.objects.filter(user=receiver)
         logger.info(
             "RequestLocationView: found %d push subscriptions for receiver=%s",
@@ -404,6 +421,24 @@ class RespondLocationRequestView(APIView):
 
         if new_status == "accepted":
             sender = location_request.sender
+
+            # Create in-app notification record for the sender
+            try:
+                Notification.objects.create(
+                    recipient=sender,
+                    notification_type="location_accepted",
+                    title="Location Accepted",
+                    message=f"{request.user.username} has shared their live location with you.",
+                    data={
+                        "type": "location_accepted",
+                        "requestId": location_request.id,
+                        "senderId": request.user.id,
+                        "senderUsername": request.user.username,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to create location_accepted notification")
+
             subscriptions = PushSubscription.objects.filter(user=sender)
 
             broadcast_push_notifications(
@@ -412,6 +447,39 @@ class RespondLocationRequestView(APIView):
                 body=f"{request.user.username} has shared their live location with you.",
                 data={
                     "type": "location_accepted",
+                    "requestId": location_request.id,
+                    "senderId": request.user.id,
+                    "senderUsername": request.user.username,
+                },
+            )
+        else:
+            # new_status == "rejected"
+            sender = location_request.sender
+
+            try:
+                Notification.objects.create(
+                    recipient=sender,
+                    notification_type="location_rejected",
+                    title="Location Request Declined",
+                    message=f"{request.user.username} declined your location request.",
+                    data={
+                        "type": "location_rejected",
+                        "requestId": location_request.id,
+                        "senderId": request.user.id,
+                        "senderUsername": request.user.username,
+                    },
+                )
+            except Exception:
+                logger.exception("Failed to create location_rejected notification")
+
+            subscriptions = PushSubscription.objects.filter(user=sender)
+
+            broadcast_push_notifications(
+                subscriptions,
+                title="Location Request Declined",
+                body=f"{request.user.username} declined your location request.",
+                data={
+                    "type": "location_rejected",
                     "requestId": location_request.id,
                     "senderId": request.user.id,
                     "senderUsername": request.user.username,

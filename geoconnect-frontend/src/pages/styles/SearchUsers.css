@@ -400,6 +400,22 @@
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
 }
 
+.send-request-btn:disabled {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+  cursor: default;
+  filter: none;
+}
+
+.send-request-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
+}
+
+.send-request-btn:disabled svg {
+  color: #10b981;
+}
+
 .send-request-btn svg {
   width: 18px;
   height: 18px;

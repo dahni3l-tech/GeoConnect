@@ -12,6 +12,7 @@ function SearchUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [sentRequests, setSentRequests] = useState(new Set());
   const navigate = useNavigate();
 
   const handleSearch = async () => {
@@ -38,14 +39,22 @@ function SearchUsers() {
   };
 
   const handleSendRequest = async (id) => {
+    if (sentRequests.has(id)) {
+      alert("Friend request already sent!");
+      return;
+    }
     try {
       await sendFriendRequest(id);
+      setSentRequests((prev) => new Set([...prev, id]));
       alert("Friend request sent!");
     } catch (error) {
-      alert(
-        error.response?.data?.error ||
-        "Unable to send request."
-      );
+      const message = error.response?.data?.error || "Unable to send request.";
+      if (message.toLowerCase().includes("already sent")) {
+        setSentRequests((prev) => new Set([...prev, id]));
+        alert("Friend request already sent!");
+      } else {
+        alert(message);
+      }
     }
   };
 
@@ -197,22 +206,37 @@ function SearchUsers() {
               <button
                 className="send-request-btn"
                 onClick={() => handleSendRequest(user.id)}
+                disabled={sentRequests.has(user.id)}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="8.5" cy="7" r="4"></circle>
-                  <line x1="20" y1="8" x2="20" y2="14"></line>
-                  <line x1="23" y1="11" x2="17" y2="11"></line>
-                </svg>
-                Send Friend Request
+                {sentRequests.has(user.id) ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 6L9 17l-5-5"></path>
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7" r="4"></circle>
+                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                  </svg>
+                )}
+                {sentRequests.has(user.id) ? "Sent" : "Send Friend Request"}
               </button>
             </div>
           ))}

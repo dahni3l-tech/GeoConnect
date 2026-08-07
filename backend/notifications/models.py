@@ -75,6 +75,7 @@ class Notification(models.Model):
         ("location_rejected", "Location Rejected"),
         ("family_invitation", "Family Invitation"),
         ("family_request_accepted", "Family Request Accepted"),
+        ("permission_request", "Permission Request"),
         ("sos_alert", "SOS Alert"),
     ]
 

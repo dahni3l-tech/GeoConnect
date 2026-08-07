@@ -75,6 +75,14 @@ function Navbar({ user, setUser, toggleMobileMenu }) {
     })();
   }, []);
 
+  // Poll for new notifications every 10 seconds so they appear in real-time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
