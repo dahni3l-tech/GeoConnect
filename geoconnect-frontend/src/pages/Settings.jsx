@@ -2,9 +2,6 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  RiPaletteLine,
-  RiLockLine,
-  RiMapPinLine,
   RiTeamLine,
   RiNotificationLine,
   RiUserLine,
@@ -14,36 +11,38 @@ import {
   RiLogoutBoxLine,
 } from "react-icons/ri";
 import { useAuth } from "../context/AuthContext";
-import { clearUserCache } from "../services/profileService";
+import { clearUserCache, getProfile, updateProfile } from "../services/profileService";
+import {
+  checkBackendSubscription,
+  subscribeUser,
+  unsubscribeUser,
+} from "../services/pushNotificationService";
+import api from "../api/axios";
 import "./styles/Settings.css";
 
 const STORAGE_KEY = "geoconnect_settings";
 
 function Settings() {
-  const { logout } = useAuth();
+  const { logout, setUser } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("profile");
   const [saved, setSaved] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [checkingSub, setCheckingSub] = useState(true);
 
   const [settings, setSettings] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return JSON.parse(raw);
     } catch {
-      // ignore parse errors
     }
     return {
-      theme: "dark",
-      locationPrecision: "high",
       notifications: {
         push: true,
         email: true,
         sound: false,
-      },
-      privacy: {
-        showLocation: true,
-        showProfile: true,
-        allowRequests: true,
       },
       guardian: {
         enableGuardian: false,
@@ -54,20 +53,72 @@ function Settings() {
   });
 
   useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profile = await getProfile();
+        setUserProfile(profile);
+        setSettings((prev) => ({
+          ...prev,
+          profile: {
+            displayName: profile.username || "",
+            email: profile.email || "",
+            bio: profile.bio || "",
+          },
+        }));
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
+
+  useEffect(() => {
+    const checkSub = async () => {
+      try {
+        const subscribed = await checkBackendSubscription();
+        setPushSubscribed(subscribed);
+      } catch {
+        setPushSubscribed(false);
+      } finally {
+        setCheckingSub(false);
+      }
+    };
+    checkSub();
+  }, []);
+
+  useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     } catch {
-      // ignore storage errors
     }
   }, [settings]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+
+      if (settings.profile) {
+        const updates = {};
+        if (settings.profile.displayName !== undefined) updates.username = settings.profile.displayName;
+        if (settings.profile.bio !== undefined) updates.bio = settings.profile.bio;
+
+        if (Object.keys(updates).length > 0) {
+          try {
+            const updated = await updateProfile(updates);
+            setUserProfile(updated);
+            setUser(updated);
+          } catch (err) {
+            console.error("Failed to update profile:", err);
+          }
+        }
+       }
+
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
-      // ignore storage errors
     }
   };
 
@@ -81,6 +132,32 @@ function Settings() {
     }));
   };
 
+  const handlePushToggle = async () => {
+    if (pushSubscribed) {
+      try {
+        await unsubscribeUser();
+        setPushSubscribed(false);
+        setSettings((prev) => ({
+          ...prev,
+          notifications: { ...prev.notifications, push: false },
+        }));
+      } catch (err) {
+        console.error("Failed to disable push:", err);
+      }
+    } else {
+      try {
+        await subscribeUser();
+        setPushSubscribed(true);
+        setSettings((prev) => ({
+          ...prev,
+          notifications: { ...prev.notifications, push: true },
+        }));
+      } catch (err) {
+        alert(err.message || "Failed to enable push notifications.");
+      }
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     clearUserCache();
@@ -89,9 +166,6 @@ function Settings() {
 
   const sections = [
     { id: "profile", label: "Profile", icon: RiUserLine },
-    { id: "appearance", label: "Appearance", icon: RiPaletteLine },
-    { id: "privacy", label: "Privacy", icon: RiLockLine },
-    { id: "location", label: "Location", icon: RiMapPinLine },
     { id: "notifications", label: "Notifications", icon: RiNotificationLine },
     { id: "guardian", label: "Guardian", icon: RiTeamLine },
     { id: "security", label: "Security", icon: RiShieldLine },
@@ -107,126 +181,39 @@ function Settings() {
       <h3>Profile Settings</h3>
       <div className="setting-field">
         <label>Display Name</label>
-        <input type="text" defaultValue="Your Username" />
+        <input
+          type="text"
+          value={settings.profile?.displayName ?? userProfile?.username ?? ""}
+          onChange={(e) =>
+            setSettings((prev) => ({
+              ...prev,
+              profile: { ...prev.profile, displayName: e.target.value },
+            }))
+          }
+          disabled={profileLoading}
+        />
       </div>
       <div className="setting-field">
         <label>Email</label>
-        <input type="email" defaultValue="your@email.com" />
+        <input type="email" value={userProfile?.email ?? ""} disabled />
       </div>
       <div className="setting-field">
         <label>Bio</label>
-        <textarea rows={3} placeholder="Tell people about yourself..." />
+        <textarea
+          rows={3}
+          placeholder="Tell people about yourself..."
+          value={settings.profile?.bio ?? userProfile?.bio ?? ""}
+          onChange={(e) =>
+            setSettings((prev) => ({
+              ...prev,
+              profile: { ...prev.profile, bio: e.target.value },
+            }))
+          }
+        />
       </div>
       <button className="btn btn-primary" onClick={handleSave}>
         <RiSaveLine size={18} />
         Save Profile
-      </button>
-    </motion.div>
-  );
-
-  const renderAppearance = () => (
-    <motion.div
-      className="settings-section"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <h3>Appearance</h3>
-      <div className="setting-field">
-        <label>Theme</label>
-        <div className="theme-options">
-          {["dark", "light", "system"].map((theme) => (
-            <button
-              key={theme}
-              className={`theme-btn ${settings.theme === theme ? "active" : ""}`}
-              onClick={() =>
-                setSettings((prev) => ({ ...prev, theme }))
-              }
-            >
-              {theme.charAt(0).toUpperCase() + theme.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <button className="btn btn-primary" onClick={handleSave}>
-        <RiSaveLine size={18} />
-        Save Appearance
-      </button>
-    </motion.div>
-  );
-
-  const renderPrivacy = () => (
-    <motion.div
-      className="settings-section"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <h3>Privacy Controls</h3>
-      {[
-        { key: "showLocation", label: "Show My Location", desc: "Allow friends to see your location" },
-        { key: "showProfile", label: "Public Profile", desc: "Allow others to view your profile" },
-        { key: "allowRequests", label: "Friend Requests", desc: "Allow people to send you friend requests" },
-      ].map((item) => (
-        <div key={item.key} className="setting-toggle">
-          <div className="toggle-info">
-            <h4>{item.label}</h4>
-            <p>{item.desc}</p>
-          </div>
-          <button
-            className={`toggle-btn ${settings.privacy[item.key] ? "active" : ""}`}
-            onClick={() => handleToggle("privacy", item.key)}
-          >
-            <span className="toggle-knob" />
-          </button>
-        </div>
-      ))}
-      <button className="btn btn-primary" onClick={handleSave}>
-        <RiSaveLine size={18} />
-        Save Privacy Settings
-      </button>
-    </motion.div>
-  );
-
-  const renderLocation = () => (
-    <motion.div
-      className="settings-section"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <h3>Location Settings</h3>
-      <div className="setting-field">
-        <label>Location Precision</label>
-        <div className="precision-options">
-          {["low", "medium", "high"].map((level) => (
-            <button
-              key={level}
-              className={`precision-btn ${settings.locationPrecision === level ? "active" : ""}`}
-              onClick={() =>
-                setSettings((prev) => ({ ...prev, locationPrecision: level }))
-              }
-            >
-              {level.charAt(0).toUpperCase() + level.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="setting-toggle">
-        <div className="toggle-info">
-          <h4>Share Location with Friends</h4>
-          <p>Allow your friends to see your live location</p>
-        </div>
-        <button
-          className={`toggle-btn ${settings.privacy.showLocation ? "active" : ""}`}
-          onClick={() => handleToggle("privacy", "showLocation")}
-        >
-          <span className="toggle-knob" />
-        </button>
-      </div>
-      <button className="btn btn-primary" onClick={handleSave}>
-        <RiSaveLine size={18} />
-        Save Location Settings
       </button>
     </motion.div>
   );
@@ -240,7 +227,14 @@ function Settings() {
     >
       <h3>Notification Preferences</h3>
       {[
-        { key: "push", label: "Push Notifications", desc: "Receive push notifications on your device" },
+        {
+          key: "push",
+          label: "Push Notifications",
+          desc: "Receive push notifications on your device",
+          toggle: pushSubscribed,
+          onToggle: handlePushToggle,
+          disabled: checkingSub,
+        },
         { key: "email", label: "Email Notifications", desc: "Receive notifications via email" },
         { key: "sound", label: "Sound Alerts", desc: "Play sound for new notifications" },
       ].map((item) => (
@@ -250,8 +244,9 @@ function Settings() {
             <p>{item.desc}</p>
           </div>
           <button
-            className={`toggle-btn ${settings.notifications[item.key] ? "active" : ""}`}
-            onClick={() => handleToggle("notifications", item.key)}
+            className={`toggle-btn ${item.toggle !== undefined ? item.toggle : settings.notifications[item.key] ? "active" : ""}`}
+            onClick={item.onToggle || (() => handleToggle("notifications", item.key))}
+            disabled={item.disabled}
           >
             <span className="toggle-knob" />
           </button>
@@ -296,12 +291,27 @@ function Settings() {
           <span className="toggle-knob" />
         </button>
       </div>
-      <button className="btn btn-primary" onClick={handleSave}>
+      <button
+        className="btn btn-primary"
+        onClick={async () => {
+          try {
+            const profileData = await api.get("guardian/profile/");
+            await api.put("guardian/profile/", {
+              is_guardian: settings.guardian.enableGuardian,
+              emergency_contacts: settings.guardian.emergencyContacts,
+            });
+          } catch {
+          }
+          handleSave();
+        }}
+      >
         <RiSaveLine size={18} />
         Save Guardian Settings
       </button>
     </motion.div>
   );
+
+  const [passwords, setPasswords] = useState({ old: "", new: "", confirm: "" });
 
   const renderSecurity = () => (
     <motion.div
@@ -313,17 +323,54 @@ function Settings() {
       <h3>Security Settings</h3>
       <div className="setting-field">
         <label>Current Password</label>
-        <input type="password" placeholder="Enter current password" />
+        <input
+          type="password"
+          placeholder="Enter current password"
+          value={passwords.old}
+          onChange={(e) => setPasswords((p) => ({ ...p, old: e.target.value }))}
+        />
       </div>
       <div className="setting-field">
         <label>New Password</label>
-        <input type="password" placeholder="Enter new password" />
+        <input
+          type="password"
+          placeholder="Enter new password"
+          value={passwords.new}
+          onChange={(e) => setPasswords((p) => ({ ...p, new: e.target.value }))}
+        />
       </div>
       <div className="setting-field">
         <label>Confirm New Password</label>
-        <input type="password" placeholder="Confirm new password" />
+        <input
+          type="password"
+          placeholder="Confirm new password"
+          value={passwords.confirm}
+          onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
+        />
       </div>
-      <button className="btn btn-primary" onClick={handleSave}>
+      <button
+        className="btn btn-primary"
+        onClick={async () => {
+          if (!passwords.old || !passwords.new) {
+            alert("Please fill in all password fields.");
+            return;
+          }
+          if (passwords.new !== passwords.confirm) {
+            alert("New passwords do not match.");
+            return;
+          }
+          try {
+            await api.post("change-password/", {
+              old_password: passwords.old,
+              new_password: passwords.new,
+            });
+            alert("Password changed successfully!");
+            setPasswords({ old: "", new: "", confirm: "" });
+          } catch (err) {
+            alert(err.response?.data?.old_password || "Failed to change password.");
+          }
+        }}
+      >
         <RiSaveLine size={18} />
         Update Password
       </button>
@@ -341,9 +388,6 @@ function Settings() {
   const renderContent = () => {
     switch (activeSection) {
       case "profile": return renderProfile();
-      case "appearance": return renderAppearance();
-      case "privacy": return renderPrivacy();
-      case "location": return renderLocation();
       case "notifications": return renderNotifications();
       case "guardian": return renderGuardian();
       case "security": return renderSecurity();

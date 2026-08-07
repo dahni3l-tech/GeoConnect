@@ -476,6 +476,28 @@
   .empty-state {
     padding: 3rem 1rem;
   }
+
+  .user-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .online-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    white-space: nowrap;
+  }
+
+  .coord-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .coord-badge svg {
+    width: 11px;
+    height: 11px;
+  }
 }
 
 @media (min-width: 1024px) {

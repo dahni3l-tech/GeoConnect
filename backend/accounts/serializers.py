@@ -194,6 +194,8 @@ class FriendRequestListSerializer(serializers.ModelSerializer):
         ]
 
 class FriendSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -207,6 +209,11 @@ class FriendSerializer(serializers.ModelSerializer):
             "is_online",
             "last_seen",
         ]
+
+    def get_profile_picture(self, obj):
+        if obj.profile_picture:
+            return obj.profile_picture.url
+        return None
 
 class UpdateLocationSerializer(serializers.ModelSerializer):
     class Meta:

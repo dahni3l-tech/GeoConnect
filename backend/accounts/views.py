@@ -207,6 +207,10 @@ class ProfileView(APIView):
 
     def get(self, request):
         user = request.user
+        ip = request.META.get("REMOTE_ADDR")
+        if ip and user.ip_address != ip:
+            user.ip_address = ip
+            user.save()
         serializer = ProfileSerializer(user)
         return Response(serializer.data)
 

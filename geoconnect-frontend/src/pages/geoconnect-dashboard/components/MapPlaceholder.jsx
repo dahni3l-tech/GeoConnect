@@ -93,11 +93,23 @@ function MapPlaceholder({ user, friends, className }) {
                 friend.username
               )}
             >
-              <Popup>
-                <strong>{friend.username}</strong>
-                <br />
-                Friend's Location
-              </Popup>
+               <Popup>
+                 {friend.profile_picture ? (
+                   <img
+                     src={friend.profile_picture}
+                     alt={friend.username}
+                     style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover" }}
+                   />
+                 ) : (
+                   <span style={{ fontSize: 28, display: "inline-block", width: 48, textAlign: "center" }}>
+                     {friend.username?.charAt(0).toUpperCase() || "?"}
+                   </span>
+                 )}
+                 <br />
+                 <strong>{friend.username}</strong>
+                 <br />
+                 Friend's Location
+               </Popup>
             </Marker>
           ))}
       </MapContainer>
