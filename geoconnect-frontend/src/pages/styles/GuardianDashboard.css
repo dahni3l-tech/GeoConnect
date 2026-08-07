@@ -68,8 +68,8 @@
 .guardian-back-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 10px 16px;
   border-radius: 10px;
   background: var(--gc-bg);
   border: 1px solid var(--gc-border);

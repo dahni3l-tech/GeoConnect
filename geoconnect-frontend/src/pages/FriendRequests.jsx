@@ -30,12 +30,12 @@ function FriendRequests() {
 
   const accept = async (id) => {
     await acceptFriendRequest(id);
-    loadRequests();
+    setRequests((prev) => prev.filter((r) => r.id !== id));
   };
 
   const reject = async (id) => {
     await rejectFriendRequest(id);
-    loadRequests();
+    setRequests((prev) => prev.filter((r) => r.id !== id));
   };
 
   const getInitial = (name) => {
