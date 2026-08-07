@@ -221,6 +221,10 @@
   box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35);
 }
 
+.request-location-btn {
+  padding: 5px 10px;
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 639px) {
   .friend-details-page {
