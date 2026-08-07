@@ -22,6 +22,7 @@ import {
   respondToLocationRequest,
   subscribeUser,
   checkBackendSubscription,
+  getSubscriptionStatus,
   getPendingLocationRequests,
 } from "../../services/pushNotificationService";
 
@@ -158,12 +159,15 @@ function Dashboard() {
 
   const checkSubscription = useCallback(async () => {
     try {
-      const backendSubscribed = await checkBackendSubscription();
+      const [backendSubscribed, frontendSubscribed] = await Promise.all([
+        checkBackendSubscription(),
+        getSubscriptionStatus(),
+      ]);
 
-      setNotificationsEnabled(backendSubscribed);
+      setNotificationsEnabled(backendSubscribed && frontendSubscribed);
       setCheckingSubscription(false);
     } catch (err) {
-      console.error("[Dashboard] Failed to check backend subscription:", err);
+      console.error("[Dashboard] Failed to check subscription:", err);
       setNotificationsEnabled(false);
       setCheckingSubscription(false);
     }

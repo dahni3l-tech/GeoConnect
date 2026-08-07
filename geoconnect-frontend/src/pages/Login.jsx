@@ -31,7 +31,9 @@ function Login() {
             if (error.response) {
                 const errors = Object.values(error.response.data).flat().join("\n");
                 alert(errors);
+                console.error("Login error:", error.response.data);
             } else {
+                console.error("Login error:", error);
                 alert("Unable to connect to the server.");
             }
         } finally {

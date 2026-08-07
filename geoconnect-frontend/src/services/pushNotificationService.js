@@ -66,18 +66,16 @@ export async function subscribeUser() {
   try {
     let subscription = await registration.pushManager.getSubscription();
 
-    if (subscription) {
-      await subscription.unsubscribe();
+    if (!subscription) {
+      subscription = await withTimeout(
+        registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        }),
+        10000,
+        "Push subscription timed out"
+      );
     }
-
-    subscription = await withTimeout(
-      registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      }),
-      10000,
-      "Push subscription timed out"
-    );
 
     const data = {
       endpoint: subscription.endpoint,
@@ -118,71 +116,26 @@ export async function unsubscribeUser() {
 }
 
 export async function getSubscriptionStatus() {
-  if (!("serviceWorker" in navigator)) {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
     return false;
   }
 
-  let registration;
-
   try {
-    await navigator.serviceWorker.getRegistration();
-
-    registration = await withTimeout(
+    const registration = await withTimeout(
       navigator.serviceWorker.ready,
       10000,
       "Service worker not ready"
     );
-  } catch (err) {
-    console.error("[pushNotificationService] Service worker not ready:", err);
 
-    if (!registration) {
-      try {
-        registration = await navigator.serviceWorker.register('/sw.js', {
-          scope: '/',
-        });
+    const subscription =
+      await registration.pushManager.getSubscription();
 
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-            });
-          }
-        });
-
-        await new Promise((resolve) => {
-          if (registration.active) {
-            resolve();
-          } else if (registration.installing) {
-            registration.installing.addEventListener('statechange', function handler() {
-              if (registration.installing?.state === 'activated') {
-                registration.installing.removeEventListener('statechange', handler);
-                resolve();
-              }
-            });
-          } else if (registration.waiting) {
-            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            registration.waiting.addEventListener('statechange', function handler() {
-              if (registration.waiting?.state === 'activated') {
-                registration.waiting.removeEventListener('statechange', handler);
-                resolve();
-              }
-            });
-          }
-        });
-
-        registration = await navigator.serviceWorker.ready;
-      } catch (manualErr) {
-        console.error("[pushNotificationService] Manual registration failed:", manualErr);
-        return false;
-      }
-    }
-  }
-
-  try {
-    const subscription = await registration.pushManager.getSubscription();
     return !!subscription;
   } catch (err) {
-    console.error("[pushNotificationService] Failed to get subscription:", err);
+    console.error(
+      "[pushNotificationService] Failed to get frontend subscription:",
+      err
+    );
     return false;
   }
 }

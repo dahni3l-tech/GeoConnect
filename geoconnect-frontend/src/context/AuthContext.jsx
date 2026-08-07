@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useLayoutEffect, useCal
 import { isTokenExpired, getTimeUntilExpiry } from "../utils/tokenUtils";
 import { updateOnlineStatus } from "../services/pushNotificationService";
 import { updateLocation } from "../services/locationService";
+import api, { refreshAccessToken } from "../api/axios";
 
 /* eslint-disable react-refresh/only-export-components */
 
@@ -27,6 +28,7 @@ export function AuthProvider({ children }) {
   const proactiveRefreshTimerRef = useRef(null);
   const lastHeartbeatRef = useRef(0);
   const lastLocationRef = useRef(null);
+  const restoreAuthRef = useRef(false);
 
   const clearAuth = useCallback(() => {
     if (proactiveRefreshTimerRef.current) {
@@ -75,8 +77,7 @@ export function AuthProvider({ children }) {
     const refresh = localStorage.getItem(REFRESH_KEY);
     if (refresh) {
       try {
-        const module = await import("../api/axios");
-        await module.default.post("logout/", { refresh }).catch(() => {});
+        await api.post("logout/", { refresh }).catch(() => {});
       } catch {
         // Ignore logout API errors
       }
@@ -84,35 +85,43 @@ export function AuthProvider({ children }) {
     clearAuth();
   }, [clearAuth]);
 
-  const restoreAuth = useCallback(() => {
+  const restoreAuth = useCallback(async () => {
+    if (restoreAuthRef.current) {
+      setIsLoading(false);
+      return;
+    }
+    restoreAuthRef.current = true;
+
     const access = localStorage.getItem(ACCESS_KEY);
     const refresh = localStorage.getItem(REFRESH_KEY);
     const userData = localStorage.getItem(USER_KEY);
 
     if (!access || !refresh) {
       setIsLoading(false);
+      restoreAuthRef.current = false;
       return;
     }
 
-    if (isTokenExpired(access)) {
-      if (isTokenExpired(refresh)) {
-        clearAuth();
-        setIsLoading(false);
-        return;
-      }
-
+    if (!isTokenExpired(access)) {
       setUser(userData ? JSON.parse(userData) : null);
       setIsAuthenticated(true);
+      scheduleProactiveRefresh(access);
       setIsLoading(false);
-      const event = new CustomEvent("auth:token-refresh-needed");
-      window.dispatchEvent(event);
+      restoreAuthRef.current = false;
       return;
     }
 
-    setUser(userData ? JSON.parse(userData) : null);
-    setIsAuthenticated(true);
-    scheduleProactiveRefresh(access);
-    setIsLoading(false);
+    try {
+      const newAccess = await refreshAccessToken();
+      setUser(userData ? JSON.parse(userData) : null);
+      setIsAuthenticated(true);
+      scheduleProactiveRefresh(newAccess);
+      setIsLoading(false);
+    } catch {
+      clearAuth();
+      setIsLoading(false);
+    }
+    restoreAuthRef.current = false;
   }, [clearAuth, scheduleProactiveRefresh]);
 
   useLayoutEffect(() => {
@@ -124,16 +133,10 @@ export function AuthProvider({ children }) {
     const handleRefreshNeeded = async () => {
       const refresh = localStorage.getItem(REFRESH_KEY);
       const access = localStorage.getItem(ACCESS_KEY);
-      if (!refresh || !access) return;
+      if (!refresh || !access || !isTokenExpired(access)) return;
 
       try {
-        const module = await import("../api/axios");
-        const response = await module.default.post("token/refresh/", { refresh });
-        const newAccess = response.data.access;
-        localStorage.setItem(ACCESS_KEY, newAccess);
-        if (response.data.refresh) {
-          localStorage.setItem(REFRESH_KEY, response.data.refresh);
-        }
+        const newAccess = await refreshAccessToken();
         scheduleProactiveRefresh(newAccess);
         window.dispatchEvent(new CustomEvent("auth:token-refreshed"));
       } catch {
@@ -189,6 +192,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const startLocationSharing = useCallback(() => {
+    if (!isAuthenticated) return;
     if (locationIntervalRef) return;
     const update = async () => {
       if (!navigator.geolocation) return;
@@ -222,7 +226,7 @@ export function AuthProvider({ children }) {
     update();
     locationIntervalRef = setInterval(update, LOCATION_UPDATE_INTERVAL);
     setSharingLocation(true);
-  }, []);
+  }, [isAuthenticated]);
 
   const stopLocationSharing = useCallback(() => {
     if (locationIntervalRef) {
@@ -234,7 +238,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isLoading) return;
 
     const sendHeartbeat = () => {
       const now = Date.now();
@@ -274,11 +278,16 @@ export function AuthProvider({ children }) {
         clearInterval(heartbeatIntervalRef);
         heartbeatIntervalRef = null;
       }
+      if (locationIntervalRef) {
+        clearInterval(locationIntervalRef);
+        locationIntervalRef = null;
+      }
+      setSharingLocation(false);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       updateOnlineStatus(false).catch(() => {});
     };
-  }, [isAuthenticated, startLocationSharing]);
+  }, [isAuthenticated, isLoading, startLocationSharing, setSharingLocation]);
 
   const value = {
     user,
